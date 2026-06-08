@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm install && npm run build --workspace @plantry/web",
+  "outputDirectory": "app/web/dist",
+  "installCommand": "npm install",
+  "framework": null
+}
