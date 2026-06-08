@@ -12,6 +12,12 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-08  Stream B slice 1: engine eligibility
+
+`engine/src/eligibility.ts` exports `eligibleDishes({ library, history, season, slot })` mirroring `docs/engine.md` §1. The §1 predicates implemented are `Active=Yes` and the seasons match (`seasons === "All" || seasons.includes(season)`). Pure functions, no I/O, library order preserved. The `slot` argument is accepted for forward-compatible signature but not consumed by §1 itself (Time-vs-meal match is §3 composition's job). 14 unit tests cover each predicate independently and combined; total engine suite now 29 tests across 6 files. (#5)
+
+Foundation for `schedule.ts`, `composition.ts`, `priority.ts`, `cap.ts`, `consolidation.ts`, and the `generateWeek` and `rankCandidatesForSlot` public APIs, all queued for later Stream B slices.
+
 ## 2026-06-08  Stream A slice 2: menu_history parser + cross-file validators
 
 `MenuHistoryRow` Zod schema in `engine/src/data/schemas.ts` (plus reusable `DayNameSchema` and `IsoDateSchema`). `parseMenuHistory` walks the multi-section `## Week of <date>` structure in `data/menu_history.md` and validates rows with row-named errors. `serializeMenuHistory` round-trips byte-identical. Two cross-file validators in a new `engine/src/data/validators.ts`: `validateMenuHistoryAgainstLibrary` (every dish id in history exists in dishes) and `validatePackSizesUsed` (every tracked ingredient in the pack-size header is used somewhere). Both throw a single message listing every offender. (#7)
