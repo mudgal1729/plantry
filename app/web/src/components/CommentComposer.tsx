@@ -38,7 +38,7 @@ export function CommentComposer({
   const [text, setText] = useState<string>("");
   const [inFlight, setInFlight] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const addComment = useMutation(anyApi["comments-mutations"].addComment);
+  const addComment = useMutation(anyApi.commentsMutations.addComment);
 
   const trimmed = text.trim();
   const canSave = trimmed.length > 0 && !inFlight;

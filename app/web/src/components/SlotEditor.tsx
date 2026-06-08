@@ -30,7 +30,7 @@ export function SlotEditor({
   const [value, setValue] = useState<string>(currentLabel);
   const [inFlight, setInFlight] = useState<boolean>(false);
   const [error, setError] = useState<ErrorState>(null);
-  const addCustomOneOff = useMutation(anyApi["week-mutations"].addCustomOneOff);
+  const addCustomOneOff = useMutation(anyApi.weekMutations.addCustomOneOff);
 
   const trimmed = value.trim();
   const canSave = trimmed.length > 0 && !inFlight;
