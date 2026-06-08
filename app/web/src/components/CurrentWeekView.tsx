@@ -1,13 +1,18 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
+import { dishes } from "@plantry/engine/library";
 import type { CurrentWeek, WeekSlot } from "../lib/types.js";
 import { dayLabel, dayOrderIndex, mealLabel, mealOrderIndex } from "../lib/days.js";
 import { getCachedWeek, setCachedWeek } from "../lib/storage.js";
 
+const DISH_NAME_BY_ID = new Map<number, string>(dishes.map((d) => [d.id, d.name]));
+
 function slotPrimaryLabel(slot: WeekSlot): string {
   if (slot.customLabel) return slot.customLabel;
-  if (slot.dishId !== null) return `Dish #${slot.dishId}`;
+  if (slot.dishId !== null) {
+    return DISH_NAME_BY_ID.get(slot.dishId) ?? `Dish #${slot.dishId}`;
+  }
   return "Unknown dish";
 }
 
