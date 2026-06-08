@@ -10,6 +10,7 @@ export default [
       "**/dist/**",
       "**/node_modules/**",
       "**/.convex/**",
+      "**/_generated/**",
       "**/coverage/**",
       "**/*.config.js",
       "**/*.config.ts",

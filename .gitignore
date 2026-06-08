@@ -41,3 +41,4 @@ engine/src/data/history.ts
 # Engineer hand-off artifacts (PR descriptions, EM check files)
 .pr-description.md
 .engineer-brief.md
+.vercel

@@ -16,7 +16,7 @@ jobs:
       - name: Repo structure check
         run: |
           set -e
-          allowed='^(\.git|\.gitignore|\.githooks|\.maintenance-state|\.prettierrc|\.prettierignore|CLAUDE\.md|MAINTENANCE\.md|DECISIONS\.md|\.github|\.claude|docs|data|features|engine|app|archive|scripts|package\.json|package-lock\.json|tsconfig\.json|tsconfig\.base\.json|eslint\.config\.js|node_modules)$'
+          allowed='^(\.git|\.gitignore|\.githooks|\.maintenance-state|\.prettierrc|\.prettierignore|\.vercel|CLAUDE\.md|MAINTENANCE\.md|DECISIONS\.md|\.github|\.claude|docs|data|features|engine|app|archive|scripts|package\.json|package-lock\.json|tsconfig\.json|tsconfig\.base\.json|eslint\.config\.js|vercel\.json|node_modules)$'
           fail=0
           for entry in $(ls -A); do
             if ! echo "$entry" | grep -E "$allowed" > /dev/null; then
