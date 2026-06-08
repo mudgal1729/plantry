@@ -13,3 +13,5 @@ export {
 } from "./data/validators.js";
 export { eligibleDishes } from "./eligibility.js";
 export type { EligibleDishesArgs, Slot, Day, Meal } from "./eligibility.js";
+export { weekSchedule } from "./schedule.js";
+export type { SlotPlan, WeekScheduleArgs, LunchMenu } from "./schedule.js";
