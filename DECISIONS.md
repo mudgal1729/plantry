@@ -190,3 +190,16 @@ Per Rajat's instruction this turn ("if not present in all-keys but inside the fo
 **Chosen:** (b). HTTP bridge adds a moving part for no upside given engine logic is pure functions. One language across engine, Convex functions, frontend, and tests reduces context-switching for Rajat and for any reviewer.
 **Reversibility:** medium. The TS engine is portable; if Python is ever needed (e.g., heavy data analysis later), the engine can be reimplemented from `docs/engine.md`.
 **Right-size check:** problem is "two languages add accidental complexity for a two-person tool"; fix level is stack selection; generality: TS-everywhere unblocks Convex pattern matching, Vercel preview deployments, MCP integration in TS, all simultaneously.
+
+---
+
+## 2026-06-08 15:45 IST — Spawn Stream A in worktree
+
+**Stream:** A
+**Context:** Streams 0 through 0.7 are shipped; Stream A is the next unblocked stream per `features/phase2.md` §4 and is a hard prerequisite for B, C, and E. The full Stream A scope (parsers, serializers, cross-file validators, history parser, build pipeline emitting `library.ts` and `history.ts`, all in CI) is too large for one PR.
+**Options considered:** (a) one mega-PR covering the full Stream A outcome list; (b) split into slices, first PR is dish + ingredient Zod schemas + parsers + serializers + round-trip tests, follow-up PRs add the history parser, cross-file validators, and the build pipeline; (c) start with the build pipeline first so library.ts is available to Stream C immediately.
+**Chosen:** (b). Matches the existing note in §4 ("First PR is dish/ingredient round-trip parsers + Zod schemas"). Smallest unit that lets Stream B start (Stream B needs the Dish type, not the build pipeline). The build pipeline can land in slice 3 once the typed exports' shape is settled.
+**Reversibility:** easy. The worktree is removable; the brief is a markdown file in the worktree.
+**Right-size check:** problem is "spawn the right first slice of Stream A"; fix level is process (engineer brief + worktree); generality: the slice pattern (Zod schema + parse + serialize + round-trip test) is reused for `menu_history.md` in slice 2 and as the load-bearing shape for any future markdown source in `data/`.
+
+Worktree: `../plantry-stream-A`. Branch: `feat/A-data-parsers`. Brief at `../plantry-stream-A/.engineer-brief.md`. Zod pre-authorized as a dependency add for this slice (it is the natural runtime-validation library for the TS engine and is the Pydantic-equivalent originally implicit in the stack memory).
