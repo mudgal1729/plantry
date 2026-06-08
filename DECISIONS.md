@@ -63,6 +63,28 @@ Decisions Rajat must approve go in the "Open items" list in `features/phase2.md`
 
 ---
 
+## 2026-06-08 19:00 IST — Stream 0 done by EM (one-time bootstrap exception)
+
+**Stream:** 0
+**Context:** First attempt to spawn the Stream 0 engineer as a background subagent failed: the subagent's sandbox is narrower than the EM session's and cannot see sibling worktree paths. The subagent reported the issue and stopped without writing files.
+**Options considered:** (a) reconfigure subagent sandbox via `.claude/settings.local.json` `additionalDirectories` then retry, (b) EM does Stream 0 itself in the worktree as a one-time exception, (c) ask Rajat to open a fresh Claude Code session in the worktree directly.
+**Chosen:** (b). Stream 0 is the bootstrap; the discipline that says "EM does not write feature code" applies to feature code, not to the infrastructure installation that brings the discipline into existence. Reasons: (a) requires writing settings.local.json which is auto-rejected as a self-modification; (c) costs Rajat session-management time Rajat said he wanted to avoid.
+**Reversibility:** trivial. The PR went through normal review (EM reviewed against principles; squash-merged on green CI).
+**Right-size check:** problem size, one-off (subagent sandbox is a known limitation); fix level, workflow (the EM is the right level to bootstrap meta-infra). Generality: Stream A onwards needs a different approach because doing every stream in the EM session violates the documented discipline; the subagent permission fix is now an open item for Rajat.
+
+---
+
+## 2026-06-08 19:05 IST — Defer subagent worktree access fix to Rajat
+
+**Stream:** G
+**Context:** To spawn engineer subagents in sibling worktrees for Streams A onwards, the harness needs `additionalDirectories` set in `.claude/settings.local.json`. The EM auto-rejected writing this file as a "self-modification". Three real paths to resolve.
+**Options considered:** (a) Rajat adds `additionalDirectories` entries to `.claude/settings.local.json` (one-time), (b) Rajat opens fresh Claude Code sessions in each worktree per stream, (c) configure WorktreeCreate/WorktreeRemove hooks so the Agent tool's `isolation: "worktree"` actually works.
+**Chosen:** surface to Rajat with a recommendation for (a); do not act unilaterally. (a) is the smallest change: a one-time settings edit that covers Streams A-F. (b) costs ongoing session-juggling. (c) is more powerful but requires writing two harness hooks, deferred until the simpler fix proves insufficient.
+**Reversibility:** trivial (any of the three are reversible).
+**Right-size check:** problem size, structural (affects every future engineer spawn); fix level, configuration (settings.local.json edit); generality, yes (one entry per stream covers all). Surfaced as open item #5 in `features/phase2.md` §5.
+
+---
+
 ## 2026-06-08 13:12 IST — CI structure-check fix on first push
 
 **Stream:** 0

@@ -120,14 +120,15 @@ Continuous. Maintains:
 
 | Stream | Status | Owner | Notes |
 |---|---|---|---|
-| 0 Repo + CI + project init | not started | EM | Blocked on Rajat's GitHub handle confirmation + DNS records for `plantry.mudgal.xyz`, `plantry-dev.mudgal.xyz`. |
-| A Data layer | not started | TBD | Starts after Stream 0. |
+| 0 Bootstrap (monorepo, PWA shell, schema, hooks, CI) | shipped | EM | PR #1 merged 2026-06-08. One-time exception: EM did the work in the worktree because subagent sandbox blocked sibling-path access. Convex/Vercel project creation is a separate browser-auth step. |
+| 0.5 Convex + Vercel project init + deploy CI | in progress | Rajat + EM | Browser-auth steps (Rajat); deploy CI step (EM after secrets exist). |
+| A Data layer | not started | TBD | Starts after subagent permissions are fixed; first PR is dish/ingredient parsers + round-trip tests. |
 | B Engine | not started | TBD | Starts after A's first PR. |
-| C Convex backend | not started | TBD | Starts after A's first PR. |
-| D Frontend | not started | TBD | Starts after Convex schema lands (early in C). |
+| C Convex backend | not started | TBD | Starts after Convex project exists + A's first PR. |
+| D Frontend | not started | TBD | Starts after Convex client codegen lands (early in C). |
 | E Slow-loop session | not started | TBD | Starts after A is live; can stub with fixtures meanwhile. |
-| F Identity + concurrency + deploy | not started | TBD | Integrates near end. |
-| G EM scaffolding | in progress | EM | Initial scaffolding shipped with the restructure. |
+| F Identity + concurrency + deploy | not started | TBD | Integrates near end. Includes automated hook test (followup from PR #1). |
+| G EM scaffolding | continuous | EM | Initial scaffolding shipped with the restructure. |
 
 EM updates this table at the start and end of every session.
 
@@ -137,10 +138,14 @@ Items the EM cannot decide alone. Surfaced in batches at natural checkpoints, ne
 
 | # | Item | EM recommendation | Status |
 |---|---|---|---|
-| 1 | GitHub handle to create the public `plantry` repo under | Confirm exact handle. EM will run `gh repo create <handle>/plantry --public --source=. --push` once given. | Pending. |
-| 2 | DNS records for `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` | Two CNAMEs in Cloudflare under `mudgal.xyz`, both pointing at `cname.vercel-dns.com`. Records listed in `docs/engineering.md` §10. | Pending Rajat to add. |
+| 1 | GitHub handle to create the public `plantry` repo under | `mudgal1729`. | Done; repo at https://github.com/mudgal1729/plantry. |
+| 2 | DNS records for `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` | Two CNAMEs in Cloudflare under `mudgal.xyz`, both pointing at `cname.vercel-dns.com`. | Done by Rajat. Awaits Vercel project to attach. |
 | 3 | Tuhina's onboarding moment | Rajat walks her through; EM surfaces the milestone when read-only PWA is live. | Acknowledged. |
 | 4 | Slow-loop cadence | Convention is Sunday around 11am IST; not enforced (manual trigger). | Locked. |
+| 5 | Subagent worktree access | Add the following block to `.claude/settings.local.json` (one-time): `{"additionalDirectories": ["/Users/rajatmugdal/Downloads/AI Products/plantry-stream-A", ".../plantry-stream-B", ".../plantry-stream-C", ".../plantry-stream-D", ".../plantry-stream-E", ".../plantry-stream-F"]}`. This grants engineer subagents read/write access to their worktree paths. Reversible. Without this, every stream after 0 either runs in the EM session (violates the discipline) or needs Rajat to open a fresh Claude Code session in each worktree directory. | Pending Rajat. |
+| 6 | Convex project creation | After Rajat logs in to Convex dashboard via GitHub, EM walks him through `cd app/convex && npx convex dev` to create the prod + preview deployments. EM then sets `VITE_CONVEX_URL` in `app/web/.env.local` and a deploy CI step. | Convex account exists per ALL_KEYS.md; project creation pending. |
+| 7 | Vercel project import | Vercel account exists. Import `mudgal1729/plantry`, root dir `app/web`, framework Vite. Add `plantry.mudgal.xyz` to prod, `plantry-dev.mudgal.xyz` to preview alias. DNS already pointing at `cname.vercel-dns.com`. | Pending Rajat. |
+| 8 | Deploy secrets | After Convex + Vercel projects exist, `gh secret set CONVEX_DEPLOY_KEY`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. EM will guide. | Blocked on items 6 and 7. |
 
 ## 6. Risks and mitigations
 
