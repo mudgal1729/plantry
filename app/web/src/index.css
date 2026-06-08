@@ -262,10 +262,8 @@ a {
 }
 
 .slot {
-  display: grid;
-  grid-template-columns: 90px 1fr auto;
-  align-items: baseline;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
   padding: 6px 0;
   border-top: 1px solid var(--grey-line);
 }
@@ -290,4 +288,318 @@ a {
   font-size: 11px;
   color: var(--grey);
   text-transform: lowercase;
+}
+
+/*
+ * Tap-target rule for interactive affordances on this view:
+ * minimum 44 x 44 px hit area, per Apple's Human Interface Guidelines
+ * (the actual size above which miss-taps drop off sharply on touchscreens).
+ * Edit / comment / save / cancel buttons below all hold to this minimum.
+ */
+
+.slot__row {
+  display: grid;
+  grid-template-columns: 90px 1fr auto auto;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.slot__edit {
+  background: transparent;
+  border: 1px solid var(--grey-line);
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.slot__edit:active {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.slot__comment-link {
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  padding: 8px 0 4px;
+  margin-top: 4px;
+  cursor: pointer;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.slot__comment-link:active {
+  color: var(--green);
+}
+
+.day-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.day-card__comment-link {
+  background: transparent;
+  border: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.day-card__comment-link:active {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.slot-editor {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--green-soft);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-editor__label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.slot-editor__input {
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--grey-line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  min-height: 44px;
+}
+
+.slot-editor__input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+.slot-editor__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.slot-editor__save {
+  background: var(--green);
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.slot-editor__save:disabled {
+  background: var(--grey);
+  cursor: not-allowed;
+}
+
+.slot-editor__cancel {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--grey-line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.slot-editor__cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.slot-editor__error {
+  color: var(--error);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.slot-editor__reload {
+  margin-top: 6px;
+  background: var(--error);
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.comment-composer {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f7f3e8;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-composer__input {
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--grey-line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 64px;
+}
+
+.comment-composer__input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+.comment-composer__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.comment-composer__save {
+  background: var(--green);
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.comment-composer__save:disabled {
+  background: var(--grey);
+  cursor: not-allowed;
+}
+
+.comment-composer__cancel {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--grey-line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.comment-composer__error {
+  color: var(--error);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.comments {
+  margin-top: 24px;
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--grey-line);
+  border-radius: 12px;
+}
+
+.comments__title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.comments__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--grey-line);
+}
+
+.comment-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.comment-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.comment-row__author {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.comment-row__attached {
+  color: var(--ink-soft);
+}
+
+.comment-row__status {
+  margin-left: auto;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--grey-line);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.comment-row__text {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--ink);
+  white-space: pre-wrap;
 }
