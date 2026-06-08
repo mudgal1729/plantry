@@ -124,7 +124,7 @@ Continuous. Maintains:
 | 0.5 Convex + Vercel project init | shipped | EM | PR #2 merged. Convex prod + dev deployments live; Vercel prod deploy live; domains added to Vercel project (DNS verification pending). |
 | 0.6 Deploy CI step | shipped | EM | GH-Vercel integration handles frontend on push-to-main. New `Deploy Convex` workflow handles schema/functions via `CONVEX_DEPLOY_KEY`. Path-filtered to `app/convex/`, `engine/`, `data/`. |
 | 0.7 DNS for custom domains | shipped | Vercel-Cloudflare integration | `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` both serve 200 OK over HTTPS. Vercel auto-configured via the Cloudflare integration (no manual records added). |
-| A Data layer | ready to spawn | TBD | Subagent permissions enabled. First PR is dish/ingredient round-trip parsers + Zod schemas. |
+| A Data layer | in progress | TBD | Slice 1 (dish + ingredient parsers + Zod schemas + round-trip tests) shipped 2026-06-08 in PR #3. Next slice: `data/menu_history.md` parser + cross-file validators. Subsequent slice: build-pipeline emit of `library.ts` / `history.ts`. |
 | B Engine | not started | TBD | Starts after A's first PR. |
 | C Convex backend | not started | TBD | Starts after Convex project exists + A's first PR. |
 | D Frontend | not started | TBD | Starts after Convex client codegen lands (early in C). |

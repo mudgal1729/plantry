@@ -12,6 +12,10 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-08  Stream A slice 1: dish + ingredient parsers
+
+Typed schemas and round-trip parsers for `data/dishes.md` and `data/ingredients.md`. Adds `zod` to the engine package and a small set of Zod schemas + inferred TS types for `Dish`, `Ingredient`, `PackSizeHeader`. `parseDishes` and `parseIngredients` validate via Zod and throw row-named errors on bad input. `serializeDishes` and `serializeIngredients` round-trip byte-identical to the source files (modulo a documented whitespace rule). Round-trip tests run against the live data files in CI. Out of scope and queued for later Stream A slices: `data/menu_history.md` parser, cross-file validators, the build-pipeline emit of `library.ts` / `history.ts`. (#3)
+
 ## 2026-06-08  Deploy pipeline live; custom domains resolving
 
 DNS auto-configured via the Vercel-Cloudflare integration; `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` both serve the PWA over HTTPS (200 OK). The GitHub-Vercel integration auto-deploys the frontend on push to main. A new `Deploy Convex` GitHub Action deploys schema and functions to `disciplined-chameleon-263.convex.cloud` on push to main when `app/convex/`, `engine/`, or `data/` changes. CI workflow runs unchanged on every PR and push.
