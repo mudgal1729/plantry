@@ -66,3 +66,25 @@ export const PackSizeHeaderSchema = z.object({
   packSize: z.string().min(1),
 });
 export type PackSizeHeader = z.infer<typeof PackSizeHeaderSchema>;
+
+export const DayNameSchema = z.enum([
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+]);
+export type DayName = z.infer<typeof DayNameSchema>;
+
+export const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const MenuHistoryRowSchema = z.object({
+  weekStart: IsoDateSchema,
+  day: DayNameSchema,
+  meal: MealTimeSchema,
+  dishName: z.string().min(1),
+  dishId: z.number().int().positive(),
+});
+export type MenuHistoryRow = z.infer<typeof MenuHistoryRowSchema>;

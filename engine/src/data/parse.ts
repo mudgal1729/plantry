@@ -2,10 +2,12 @@ import { ZodError } from "zod";
 import {
   DishSchema,
   IngredientSchema,
+  MenuHistoryRowSchema,
   PackSizeHeaderSchema,
   SeasonSchema,
   type Dish,
   type Ingredient,
+  type MenuHistoryRow,
   type PackSizeHeader,
   type SeasonsField,
 } from "./schemas.js";
@@ -246,4 +248,100 @@ export function parseIngredients(markdown: string): {
     }
   }
   return { packSizes, rows };
+}
+
+const MENU_HISTORY_HEADERS = ["Week Start", "Day", "Meal", "Dish Name", "Dish ID"];
+
+interface WeekSection {
+  weekStart: string;
+  table: ParsedTable;
+}
+
+function findWeekSections(markdown: string): WeekSection[] {
+  const lines = markdown.split("\n");
+  const sections: WeekSection[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const headerMatch = line.match(/^## Week of (\d{4}-\d{2}-\d{2})\s*$/);
+    if (!headerMatch) {
+      i += 1;
+      continue;
+    }
+    const weekStart = headerMatch[1];
+    // Find the next pipe-table block after this heading.
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim().startsWith("|")) {
+      j += 1;
+    }
+    if (j + 1 >= lines.length || !isDividerRow(lines[j + 1])) {
+      throw new Error(
+        `parseMenuHistory: week "${weekStart}" has no pipe table beneath the heading`,
+      );
+    }
+    const headers = splitRow(lines[j]);
+    let k = j + 2;
+    const rows: string[][] = [];
+    while (
+      k < lines.length &&
+      lines[k].trim().startsWith("|") &&
+      !isDividerRow(lines[k])
+    ) {
+      rows.push(splitRow(lines[k]));
+      k += 1;
+    }
+    sections.push({ weekStart, table: { headers, rows } });
+    i = k;
+  }
+  return sections;
+}
+
+export function parseMenuHistory(markdown: string): MenuHistoryRow[] {
+  const sections = findWeekSections(markdown);
+  if (sections.length === 0) {
+    throw new Error("parseMenuHistory: no '## Week of YYYY-MM-DD' sections found");
+  }
+  const out: MenuHistoryRow[] = [];
+  for (const section of sections) {
+    const { weekStart, table } = section;
+    if (
+      table.headers.length !== MENU_HISTORY_HEADERS.length ||
+      !MENU_HISTORY_HEADERS.every((h, i) => h === table.headers[i])
+    ) {
+      throw new Error(
+        `parseMenuHistory: week "${weekStart}" has unexpected headers ${JSON.stringify(table.headers)}`,
+      );
+    }
+    for (const cells of table.rows) {
+      if (cells.length !== MENU_HISTORY_HEADERS.length) {
+        throw new Error(
+          `parseMenuHistory: week "${weekStart}" row has ${cells.length} cells, expected ${MENU_HISTORY_HEADERS.length}: ${JSON.stringify(cells)}`,
+        );
+      }
+      const rowKey = `menu_history row week=${weekStart} day=${cells[1]} meal=${cells[2]} dish_id=${cells[4]}`;
+      if (cells[0] !== weekStart) {
+        throw new Error(
+          `${rowKey}: Week Start cell "${cells[0]}" does not match section heading "${weekStart}"`,
+        );
+      }
+      const dishId = parseIntStrict(cells[4], "Dish ID", rowKey);
+      try {
+        out.push(
+          MenuHistoryRowSchema.parse({
+            weekStart: cells[0],
+            day: cells[1],
+            meal: cells[2],
+            dishName: cells[3],
+            dishId,
+          }),
+        );
+      } catch (err) {
+        if (err instanceof ZodError) {
+          throw new Error(`${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
+        }
+        throw err;
+      }
+    }
+  }
+  return out;
 }

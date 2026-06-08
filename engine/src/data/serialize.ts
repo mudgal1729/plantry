@@ -10,7 +10,13 @@
 // is fixed text that the serializer emits verbatim, so the parser does not
 // need to round-trip it.
 
-import type { Dish, Ingredient, PackSizeHeader, SeasonsField } from "./schemas.js";
+import type {
+  Dish,
+  Ingredient,
+  MenuHistoryRow,
+  PackSizeHeader,
+  SeasonsField,
+} from "./schemas.js";
 
 function cell(value: string): string {
   if (value.length === 0) return " ";
@@ -123,4 +129,52 @@ export function serializeIngredients(
     rowLines.join("\n") +
     "\n"
   );
+}
+
+// Whitespace rule additions for menu_history.md.
+//
+// The file is a sequence of week sections. Each section is a level-2 heading
+// "## Week of YYYY-MM-DD", one blank line, a five-column pipe table (Week
+// Start, Day, Meal, Dish Name, Dish ID), and one blank line as the section
+// separator. The file ends after the final section's last data row with a
+// single trailing newline (no blank line after it). Rows preserve the order
+// they appear in; grouping is by weekStart in first-seen order.
+
+const MENU_HISTORY_HEADERS = ["Week Start", "Day", "Meal", "Dish Name", "Dish ID"];
+
+export function serializeMenuHistory(rows: MenuHistoryRow[]): string {
+  const groups: { weekStart: string; rows: MenuHistoryRow[] }[] = [];
+  const indexByWeek = new Map<string, number>();
+  for (const r of rows) {
+    let idx = indexByWeek.get(r.weekStart);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexByWeek.set(r.weekStart, idx);
+      groups.push({ weekStart: r.weekStart, rows: [] });
+    }
+    groups[idx].rows.push(r);
+  }
+
+  const parts: string[] = [];
+  for (let g = 0; g < groups.length; g += 1) {
+    const group = groups[g];
+    const lines: string[] = [];
+    lines.push(`## Week of ${group.weekStart}`);
+    lines.push("");
+    lines.push(headerLine(MENU_HISTORY_HEADERS));
+    lines.push(dividerLine(MENU_HISTORY_HEADERS));
+    for (const r of group.rows) {
+      lines.push(
+        bodyLine([
+          r.weekStart,
+          r.day,
+          r.meal,
+          r.dishName,
+          String(r.dishId),
+        ]),
+      );
+    }
+    parts.push(lines.join("\n"));
+  }
+  return parts.join("\n\n") + "\n";
 }
