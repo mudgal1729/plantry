@@ -1,0 +1,77 @@
+[
+  {
+    "_id": "cmt_fixture_001",
+    "createdAt": 1717804800000,
+    "author": "rajat",
+    "attachedTo": {
+      "kind": "dish",
+      "weekStart": "2026-06-01",
+      "day": "Sat",
+      "dishId": 78
+    },
+    "text": "Prawn stir fry on Saturday was too oily. Reducing oil in the recipe note would help.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "cmt_fixture_002",
+    "createdAt": 1717891200000,
+    "author": "tuhina",
+    "attachedTo": {
+      "kind": "day",
+      "weekStart": "2026-06-01",
+      "day": "Fri",
+      "dishId": null
+    },
+    "text": "We haven't had a single low-spice dish all week. After back-to-back travel days I want something milder.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "cmt_fixture_003",
+    "createdAt": 1717977600000,
+    "author": "rajat",
+    "attachedTo": {
+      "kind": "dish",
+      "weekStart": "2026-06-01",
+      "day": "Thu",
+      "dishId": 55
+    },
+    "text": "Loved the chicken curry today.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "cmt_fixture_004",
+    "createdAt": 1718064000000,
+    "author": "tuhina",
+    "attachedTo": {
+      "kind": "dish",
+      "weekStart": "2026-06-01",
+      "day": "Mon",
+      "dishId": 3
+    },
+    "text": "Palak paneer again. Feels like we have had paneer a lot lately.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "cmt_fixture_005",
+    "createdAt": 1718150400000,
+    "author": "rajat",
+    "attachedTo": {
+      "kind": "dish",
+      "weekStart": "2026-06-01",
+      "day": "Wed",
+      "dishId": 5
+    },
+    "text": "Shahi paneer on Wednesday after palak paneer on Monday. A bit much paneer this week.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  }
+]

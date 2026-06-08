@@ -12,7 +12,7 @@ User feedback accumulates as comments in Convex during the week (and as runtime 
 
 ### 1.2 Trigger
 
-Rajat opens a Claude Code session in the main repo directory and types `/slow-loop`. Convention is Sunday morning around 11am IST, but the cadence is not enforced. The session can also be passed a specific date range (`/slow-loop since:2026-05-01`) or focus theme (`/slow-loop focus:spice`).
+Rajat opens a Claude Code session in the main repo directory and types `/slow-loop`. Convention is Sunday morning around 11am IST, but the cadence is not enforced. The session can also be passed a specific date range (`/slow-loop since:2026-05-01`), a focus theme (`/slow-loop focus:spice`), or a fixture path (`/slow-loop --fixture data/test-fixtures/slow-loop`). The fixture path is for EM dry-runs against the synthetic comments and incidents at `data/test-fixtures/slow-loop/queued-comments.example.json` and `incidents.example.json`; when passed, the session reads from those files instead of Convex.
 
 ### 1.3 Inputs the session reads
 

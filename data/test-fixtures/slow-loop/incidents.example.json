@@ -1,0 +1,31 @@
+[
+  {
+    "_id": "inc_fixture_001",
+    "createdAt": 1718064000000,
+    "source": "engine",
+    "severity": "warn",
+    "context": {
+      "weekStart": "2026-06-01",
+      "day": "Wed",
+      "meal": "lunch",
+      "expected": "at least one gravy dish",
+      "got": "no gravy dish present"
+    },
+    "message": "Engine generated a week with no gravy dish on Wednesday lunch; auto-recovery returned the last-good week.",
+    "resolvedAt": null
+  },
+  {
+    "_id": "inc_fixture_002",
+    "createdAt": 1718150400000,
+    "source": "engine",
+    "severity": "warn",
+    "context": {
+      "weekStart": "2026-06-01",
+      "primaryIngredient": "Paneer",
+      "occurrences": 3,
+      "window": "single week"
+    },
+    "message": "Paneer appeared as primary ingredient in three slots in one week; recency rule did not flag because each dish ID was distinct.",
+    "resolvedAt": null
+  }
+]
