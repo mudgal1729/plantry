@@ -12,6 +12,10 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-08  Stream B slice 2: weekly schedule per docs/engine.md §2
+
+`engine/src/schedule.ts` exports `weekSchedule({ weekStart, lastSaturdayMenu?, rng? }): SlotPlan[]`. SlotPlan carries `day`, `meal`, `itemCount`, and `lunchMenu` (1 to 4, lunch only). Mon/Wed/Fri are 5-item days (Menu 1, 3-item lunch); Tue/Thu are 5-item days (Menu 2, 4-item lunch); Saturday has no breakfast and lunch is 3 items of Menu 3 or 4 alternating with the previous Saturday (random fallback when history is empty). Sunday emits no slots. Pure: no I/O, no library coupling. The caller resolves `lastSaturdayMenu` from history and library tags so schedule.ts stays library-free. ISO Monday calendar validation on `weekStart`. 18 unit tests (47 total engine tests now). §3.2 weekday substitution is deferred to composition. (#8)
+
 ## 2026-06-08  Stream C slice 1: schema audit, read-only queries, dev seed
 
 Three new Convex queries under `app/convex/queries/`: `getCurrentWeek` (latest `currentWeek` row or null), `listQueuedComments` (queued comments ascending by `createdAt`), `listIncidents` (open incidents descending by `createdAt`). Plus `app/convex/seed.ts` exporting `seedCurrentWeek`, an internal mutation that inserts a sample week for dev, runnable as `npx convex run seed:seedCurrentWeek`. Schema audit against `docs/engineering.md` §3: matches spec on all five tables. Indexes present in the schema (used by these queries) are not enumerated in §3; deferred to a docs maintenance pass. `app/convex/_generated/` is now tracked in git so CI's typecheck has the types without needing a Convex deploy key on every PR. (#6)
