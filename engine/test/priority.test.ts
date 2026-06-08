@@ -4,9 +4,16 @@ import {
   byLongestUnused,
   byNoSameDayPrimaryIngredient,
   byConsolidationStub,
+  byIngredientConsolidation,
   byPreferredYes,
 } from "../src/priority.js";
-import type { Dish, MenuHistoryRow } from "../src/data/schemas.js";
+import { emptyLedger } from "../src/consolidation.js";
+import type {
+  Dish,
+  Ingredient,
+  MenuHistoryRow,
+  PackSizeHeader,
+} from "../src/data/schemas.js";
 
 let nextId = 1;
 
@@ -155,14 +162,56 @@ describe("priority — docs/engine.md §4", () => {
     });
   });
 
-  describe("§4 step 3: ingredient consolidation (stub)", () => {
-    it("returns the pool unchanged (placeholder until §6 lands in B slice 5)", () => {
+  describe("§4 step 3: ingredient consolidation (§6 wiring)", () => {
+    it("is a no-op when no consolidation context is supplied", () => {
       const a = makeDish({ name: "A" });
       const b = makeDish({ name: "B" });
       const c = makeDish({ name: "C" });
       const pool = [a, b, c];
-      const out = byConsolidationStub(pool, undefined);
+      const out = byIngredientConsolidation(pool, undefined);
       expect(out.map((d) => d.name)).toEqual(["A", "B", "C"]);
+    });
+
+    it("byConsolidationStub remains aliased for slice-4 callers (no-op when context absent)", () => {
+      const a = makeDish({ name: "A" });
+      const b = makeDish({ name: "B" });
+      // The legacy slice-4 export still resolves and stays a no-op without a
+      // ledger; only its identity widened to accept the §6 context.
+      const out = byConsolidationStub([a, b], undefined);
+      expect(out.map((d) => d.name)).toEqual(["A", "B"]);
+    });
+
+    it("reorders the pool when a ledger with above-threshold leftover is supplied", () => {
+      const paneerHeader: PackSizeHeader = { ingredient: "Paneer", packSize: "200 g" };
+      const usesPaneer = makeDish({ name: "UsesPaneer" });
+      const noPaneer = makeDish({ name: "NoPaneer" });
+      const ingredients: Ingredient[] = [
+        {
+          dishId: usesPaneer.id,
+          dishName: usesPaneer.name,
+          ingredient: "Paneer",
+          quantity: 100,
+          unit: "g",
+        },
+        {
+          dishId: noPaneer.id,
+          dishName: noPaneer.name,
+          ingredient: "Onion",
+          quantity: 100,
+          unit: "g",
+        },
+      ];
+      const ledger = emptyLedger([paneerHeader]);
+      const paneer = ledger.get("Paneer")!;
+      paneer.packsOnBuyList = 1;
+      paneer.usedGrams = 50;
+      paneer.leftoverGrams = 150; // above the 50 g default threshold
+
+      const out = byIngredientConsolidation([noPaneer, usesPaneer], {
+        ledger,
+        ingredients,
+      });
+      expect(out.map((d) => d.name)).toEqual(["UsesPaneer", "NoPaneer"]);
     });
   });
 
@@ -290,6 +339,68 @@ describe("priority — docs/engine.md §4", () => {
         history,
       });
       expect(out.map((d) => d.name)).toEqual(["ChapatiYes", "RiceNo"]);
+    });
+
+    it("step 3 reorders the pool when a ledger with non-zero leftover is supplied", () => {
+      const paneerHeader: PackSizeHeader = { ingredient: "Paneer", packSize: "200 g" };
+      // Two same-Preferred, same-history candidates. Without a ledger they
+      // come out in input order; with a ledger that has 150 g Paneer
+      // leftover, the dish that consumes Paneer ranks above the one that
+      // doesn't.
+      const usesPaneer = makeDish({
+        name: "UsesPaneer",
+        primaryIngredient: "Chicken",
+        preferred: "No",
+      });
+      const noPaneer = makeDish({
+        name: "NoPaneer",
+        primaryIngredient: "Chicken",
+        preferred: "No",
+      });
+      const ingredients: Ingredient[] = [
+        {
+          dishId: usesPaneer.id,
+          dishName: usesPaneer.name,
+          ingredient: "Paneer",
+          quantity: 100,
+          unit: "g",
+        },
+        {
+          dishId: noPaneer.id,
+          dishName: noPaneer.name,
+          ingredient: "Onion",
+          quantity: 100,
+          unit: "g",
+        },
+      ];
+      const ledger = emptyLedger([paneerHeader]);
+      const paneer = ledger.get("Paneer")!;
+      paneer.packsOnBuyList = 1;
+      paneer.usedGrams = 50;
+      paneer.leftoverGrams = 150;
+
+      // Baseline: no ledger → input order preserved (no step would reorder).
+      const baseline = rankCandidates({
+        pool: [noPaneer, usesPaneer],
+        history: [],
+      });
+      expect(baseline.map((d) => d.name)).toEqual(["NoPaneer", "UsesPaneer"]);
+
+      // With ledger: step 3 reorders so UsesPaneer comes first.
+      const withLedger = rankCandidates({
+        pool: [noPaneer, usesPaneer],
+        history: [],
+        consolidationContext: { ledger, ingredients },
+      });
+      expect(withLedger.map((d) => d.name)).toEqual(["UsesPaneer", "NoPaneer"]);
+    });
+
+    it("step 3 is a no-op when no ledger is supplied (preserves slice-4 behaviour)", () => {
+      const a = makeDish({ name: "A", preferred: "No" });
+      const b = makeDish({ name: "B", preferred: "No" });
+      const c = makeDish({ name: "C", preferred: "No" });
+      const out = rankCandidates({ pool: [a, b, c], history: [] });
+      expect(out.map((d) => d.name)).toEqual(["A", "B", "C"]);
     });
   });
 

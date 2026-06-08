@@ -1,12 +1,23 @@
-import type { Dish, MenuHistoryRow } from "./data/schemas.js";
+import type { Dish, Ingredient, MenuHistoryRow } from "./data/schemas.js";
+import {
+  DEFAULT_LEFTOVER_THRESHOLD_GRAMS,
+  rankByConsolidation,
+  type IngredientLedger,
+} from "./consolidation.js";
 
 /**
- * Placeholder context shape for §6 ingredient consolidation. Step 3 of §4
- * delegates to §6, which has not landed yet (B slice 5). When §6 ships, this
- * type will carry the leftover ledger needed to score candidates by which
- * ingredients they reuse from earlier picks in the week.
+ * Context for §4 step 3 (delegates to §6 ingredient consolidation). When
+ * `ledger` is null/undefined the step is a no-op so callers with no ledger
+ * (engine harnesses, isolated rankCandidates calls) keep the legacy
+ * behaviour. Soft consolidation (the named fresh-produce list in §6) is
+ * optional and applied as a secondary tiebreak within hard-score groups.
  */
-export type ConsolidationContext = Record<string, never>;
+export interface ConsolidationContext {
+  ledger: IngredientLedger;
+  ingredients: Ingredient[];
+  thresholdGrams?: number;
+  lastFreshItemsUsed?: ReadonlySet<string>;
+}
 
 export interface RankCandidatesArgs {
   pool: Dish[];
@@ -19,8 +30,12 @@ export interface RankCandidatesArgs {
    * decided yet.
    */
   sameDayBreakfastPrimaryIngredient?: string;
-  /** Placeholder for §6 ingredient consolidation. Unused until B slice 5. */
-  consolidationContext?: ConsolidationContext;
+  /**
+   * §6 ingredient-consolidation context (ledger + ingredient table). Undefined
+   * leaves step 3 a no-op; null is also accepted for callers that explicitly
+   * disable consolidation. See `ConsolidationContext`.
+   */
+  consolidationContext?: ConsolidationContext | null;
 }
 
 const LUNCH_CARB_CATEGORIES = new Set(["Chapati", "Rice"]);
@@ -113,16 +128,25 @@ export function byNoSameDayPrimaryIngredient(
 }
 
 /**
- * §4 step 3 is implemented in B slice 5 (§6 ingredient consolidation). This is
- * a no-op placeholder until §6 lands.
+ * §4 step 3: ingredient consolidation (delegates to §6). When no
+ * consolidation context is supplied this is a no-op, matching the pre-§6
+ * behaviour. With a ledger, candidates that consume above-threshold
+ * leftovers rank above those that do not; soft consolidation on the named
+ * fresh-produce list is a secondary tiebreak.
  */
-export function byConsolidationStub(
+export function byIngredientConsolidation(
   pool: Dish[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _context: ConsolidationContext | undefined,
+  context: ConsolidationContext | null | undefined,
 ): Dish[] {
-  return pool;
+  if (!context) return pool;
+  return rankByConsolidation(pool, context.ledger, context.ingredients, {
+    thresholdGrams: context.thresholdGrams ?? DEFAULT_LEFTOVER_THRESHOLD_GRAMS,
+    lastFreshItemsUsed: context.lastFreshItemsUsed,
+  });
 }
+
+/** Backwards-compatible alias retained for callers of the slice-4 placeholder. */
+export const byConsolidationStub = byIngredientConsolidation;
 
 /**
  * §4 step 4: Preferred=Yes ranks above Preferred=No. Stable: within each group
@@ -149,7 +173,7 @@ export function byPreferredYes(pool: Dish[]): Dish[] {
 export function rankCandidates(args: RankCandidatesArgs): Dish[] {
   const step1 = byLongestUnused(args.pool, args.history);
   const step2 = byNoSameDayPrimaryIngredient(step1, args.sameDayBreakfastPrimaryIngredient);
-  const step3 = byConsolidationStub(step2, args.consolidationContext);
+  const step3 = byIngredientConsolidation(step2, args.consolidationContext);
   const step4 = byPreferredYes(step3);
   return step4;
 }
