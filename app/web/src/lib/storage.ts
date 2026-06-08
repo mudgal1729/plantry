@@ -7,6 +7,7 @@ import type { CachedWeek } from "./types.js";
 const AUTH_KEY = "plantry:auth";
 const IDENTITY_KEY = "plantry:identity";
 const CACHED_WEEK_KEY = "plantry:lastWeek";
+const DEVICE_ID_KEY = "plantry:deviceId";
 
 // Auth timeout: a week. Chosen because both phones live with their owner and
 // a personal household app doesn't need session security beyond that.
@@ -83,4 +84,30 @@ export function getCachedWeek(): CachedWeek | null {
 
 export function setCachedWeek(week: CachedWeek): void {
   safeSet(CACHED_WEEK_KEY, JSON.stringify(week));
+}
+
+// Stable per-device identifier used as the upsert key for the Convex
+// `userProfiles` row. Generated once on first load and reused on every
+// subsequent visit. `crypto.randomUUID` is preferred (RFC 4122 v4); we
+// fall back to a Math.random-based 16-char string if it's unavailable
+// (older Safari without secure context, e.g. http://localhost over LAN).
+export function getOrCreateDeviceId(): string {
+  const existing = safeGet(DEVICE_ID_KEY);
+  if (existing && existing.length > 0) return existing;
+  const fresh = generateDeviceId();
+  safeSet(DEVICE_ID_KEY, fresh);
+  return fresh;
+}
+
+function generateDeviceId(): string {
+  const c = typeof crypto !== "undefined" ? crypto : undefined;
+  if (c && typeof c.randomUUID === "function") {
+    return c.randomUUID();
+  }
+  let out = "";
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 16; i++) {
+    out += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+  }
+  return out;
 }

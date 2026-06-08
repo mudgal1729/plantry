@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMutation } from "convex/react";
+import { anyApi } from "convex/server";
 import { Header } from "./components/Header.js";
 import { PasscodeGate } from "./components/PasscodeGate.js";
 import { IdentityPicker } from "./components/IdentityPicker.js";
@@ -6,6 +8,7 @@ import { CurrentWeekView } from "./components/CurrentWeekView.js";
 import {
   clearIdentity,
   getIdentity,
+  getOrCreateDeviceId,
   isAuthValid,
   markAuthPassed,
   setIdentity,
@@ -17,6 +20,7 @@ const PASSCODE = import.meta.env.VITE_PLANTRY_PASSCODE ?? "";
 export function App() {
   const [authed, setAuthed] = useState<boolean>(() => isAuthValid());
   const [identity, setIdentityState] = useState<Identity | null>(() => getIdentity());
+  const setUserProfile = useMutation(anyApi.users.setUserProfile);
 
   function handlePass() {
     markAuthPassed();
@@ -26,6 +30,13 @@ export function App() {
   function handlePickIdentity(next: Identity) {
     setIdentity(next);
     setIdentityState(next);
+    // Fire-and-forget: a more rigorous retry / sync is Stream F's concern.
+    // The localStorage write above keeps the UI source of truth correct
+    // regardless of whether this round-trips.
+    const deviceId = getOrCreateDeviceId();
+    setUserProfile({ deviceId, identity: next }).catch((err) => {
+      console.error("setUserProfile failed", err);
+    });
   }
 
   function handleClearIdentity() {
@@ -45,7 +56,7 @@ export function App() {
     <div className="app">
       <Header identity={identity} onClearIdentity={handleClearIdentity} />
       <main className="app__main">
-        <CurrentWeekView />
+        <CurrentWeekView identity={identity} />
       </main>
       <footer className="app__footer">
         <a href="https://github.com/mudgal1729/plantry" target="_blank" rel="noreferrer">
