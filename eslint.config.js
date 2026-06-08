@@ -45,4 +45,10 @@ export default [
       globals: { ...globals.node },
     },
   },
+  {
+    files: ["scripts/**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
 ];
