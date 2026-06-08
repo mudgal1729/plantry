@@ -142,10 +142,13 @@ Items the EM cannot decide alone. Surfaced in batches at natural checkpoints, ne
 | 2 | DNS records for `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` | Two CNAMEs in Cloudflare under `mudgal.xyz`, both pointing at `cname.vercel-dns.com`. | Done by Rajat. Awaits Vercel project to attach. |
 | 3 | Tuhina's onboarding moment | Rajat walks her through; EM surfaces the milestone when read-only PWA is live. | Acknowledged. |
 | 4 | Slow-loop cadence | Convention is Sunday around 11am IST; not enforced (manual trigger). | Locked. |
-| 5 | Subagent worktree access | Add the following block to `.claude/settings.local.json` (one-time): `{"additionalDirectories": ["/Users/rajatmugdal/Downloads/AI Products/plantry-stream-A", ".../plantry-stream-B", ".../plantry-stream-C", ".../plantry-stream-D", ".../plantry-stream-E", ".../plantry-stream-F"]}`. This grants engineer subagents read/write access to their worktree paths. Reversible. Without this, every stream after 0 either runs in the EM session (violates the discipline) or needs Rajat to open a fresh Claude Code session in each worktree directory. | Pending Rajat. |
-| 6 | Convex project creation | After Rajat logs in to Convex dashboard via GitHub, EM walks him through `cd app/convex && npx convex dev` to create the prod + preview deployments. EM then sets `VITE_CONVEX_URL` in `app/web/.env.local` and a deploy CI step. | Convex account exists per ALL_KEYS.md; project creation pending. |
-| 7 | Vercel project import | Vercel account exists. Import `mudgal1729/plantry`, root dir `app/web`, framework Vite. Add `plantry.mudgal.xyz` to prod, `plantry-dev.mudgal.xyz` to preview alias. DNS already pointing at `cname.vercel-dns.com`. | Pending Rajat. |
-| 8 | Deploy secrets | After Convex + Vercel projects exist, `gh secret set CONVEX_DEPLOY_KEY`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. EM will guide. | Blocked on items 6 and 7. |
+| 5 | Subagent worktree access | `.claude/settings.local.json` with additionalDirectories for stream-A through stream-F worktrees. | Done by EM. |
+| 6 | Convex project creation | Team `rajatmudgaliitr`, project `plantry`, dev `lovely-curlew-631`, prod `disciplined-chameleon-263`. Schema deployed to both. | Done by EM. |
+| 7 | Vercel project import + link | `mudgal1729s-projects/plantry`, linked from monorepo root, env vars set (prod and dev). | Done by EM. |
+| 8 | Vercel domains added to project | `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` registered in the project; verification pending CNAMEs. | Done by EM. |
+| 9 | Cloudflare CNAMEs | Rajat to add in Cloudflare dashboard: `plantry` -> `cname.vercel-dns.com` (proxied off), `plantry-dev` -> `cname.vercel-dns.com` (proxied off). Or drop a CF API token for EM to set via API. | **Pending Rajat.** |
+| 10 | Vercel token | Generated at vercel.com/account/tokens (no CLI). `gh secret set VERCEL_TOKEN` after. | **Pending Rajat.** |
+| 11 | GH Actions deploy step | After items 9 and 10 land, EM wires `convex deploy --yes` + `vercel deploy --prod` into the CI workflow on push-to-main. | Blocked on 9 and 10. |
 
 ## 6. Risks and mitigations
 

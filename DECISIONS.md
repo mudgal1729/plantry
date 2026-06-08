@@ -63,6 +63,15 @@ Decisions Rajat must approve go in the "Open items" list in `features/phase2.md`
 
 ---
 
+## 2026-06-08 20:45 IST — Prod Convex deployed; domains added; DNS still missing
+
+**Stream:** 0.5
+**Context:** With per-target authorization from Rajat, ran `vercel domains add` for both subdomains and `npx convex deploy --yes` for prod. Production Convex deployment created at `disciplined-chameleon-263.convex.cloud`. Domains accepted by Vercel but the DNS verification will fail because the actual Cloudflare CNAMEs for `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` are not set (verified by `dig +trace`).
+**Right-size check:** problem size, one-off setup; fix level, dashboard records + token; generality, every future prod deploy uses these credentials. No code change needed.
+**Open items remaining:** Cloudflare CNAMEs (Rajat dashboard or CF API token); Vercel token (Rajat dashboard, no CLI alternative); preview env var (CLI quirk, will work around via GH Actions deploy step).
+
+---
+
 ## 2026-06-08 20:20 IST — Production deploy via promote; classifier per-action limits documented
 
 **Stream:** 0.5
