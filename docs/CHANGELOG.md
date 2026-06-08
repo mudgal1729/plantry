@@ -12,6 +12,14 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-08  Stream C slice 1: schema audit, read-only queries, dev seed
+
+Three new Convex queries under `app/convex/queries/`: `getCurrentWeek` (latest `currentWeek` row or null), `listQueuedComments` (queued comments ascending by `createdAt`), `listIncidents` (open incidents descending by `createdAt`). Plus `app/convex/seed.ts` exporting `seedCurrentWeek`, an internal mutation that inserts a sample week for dev, runnable as `npx convex run seed:seedCurrentWeek`. Schema audit against `docs/engineering.md` §3: matches spec on all five tables. Indexes present in the schema (used by these queries) are not enumerated in §3; deferred to a docs maintenance pass. `app/convex/_generated/` is now tracked in git so CI's typecheck has the types without needing a Convex deploy key on every PR. (#6)
+
+Mutations (`swapDish`, `addCustomOneOff`, `addComment`, `finalizeWeek`), auto-recovery middleware, and `getGroceryList` are deferred to later Stream C slices that depend on Stream B engine integration.
+
+Surfaces the same `weekArchive` vs `MenuHistoryRow` shape question PR #7 raised; reconciliation still deferred.
+
 ## 2026-06-08  Stream B slice 1: engine eligibility
 
 `engine/src/eligibility.ts` exports `eligibleDishes({ library, history, season, slot })` mirroring `docs/engine.md` §1. The §1 predicates implemented are `Active=Yes` and the seasons match (`seasons === "All" || seasons.includes(season)`). Pure functions, no I/O, library order preserved. The `slot` argument is accepted for forward-compatible signature but not consumed by §1 itself (Time-vs-meal match is §3 composition's job). 14 unit tests cover each predicate independently and combined; total engine suite now 29 tests across 6 files. (#5)
