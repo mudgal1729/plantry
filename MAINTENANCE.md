@@ -1,0 +1,163 @@
+# Plantry — Maintenance
+
+Spec for the two human-triggered jobs that keep the repo healthy: the slow loop (turning accumulated user feedback into structural change) and canonical-doc reconciliation (keeping `docs/product.md`, `docs/engine.md`, `docs/engineering.md`, `docs/development.md` aligned to shipped reality).
+
+Both jobs run from Claude Code sessions invoked by Rajat. Neither is on a cron. The session is the trigger; the output is always a pull request; the merge is the approval.
+
+## 1. The slow loop
+
+### 1.1 Why
+
+User feedback accumulates as comments in Convex during the week (and as runtime incidents from the auto-recovery middleware). These cannot be applied directly: each one needs right-size diagnosis before becoming a structural change. The slow loop is the only path by which `data/dishes.md`, `data/ingredients.md`, `docs/engine.md`, `engine/`, or `data/changelog.md` change.
+
+### 1.2 Trigger
+
+Rajat opens a Claude Code session in the main repo directory and types `/slow-loop`. Convention is Sunday morning around 11am IST, but the cadence is not enforced. The session can also be passed a specific date range (`/slow-loop since:2026-05-01`) or focus theme (`/slow-loop focus:spice`).
+
+### 1.3 Inputs the session reads
+
+- All `queued` rows in Convex `comments` (via `npx convex run comments:listQueued`).
+- All open `incidents` from Convex (same period as comments).
+- Current `data/dishes.md`, `data/ingredients.md`, `data/menu_history.md`, `data/changelog.md`.
+- Current `docs/engine.md` plus `engine/src/` for the engine state.
+- Recent Convex `weekArchive` rows for context on what was actually cooked.
+
+### 1.4 What the session does
+
+1. Cluster comments + incidents by theme (e.g. "spice tolerance varies day to day", "we never cook lauki anymore", "fish pack size feels off", "Tuhina ordered in Thursdays in May").
+2. For each cluster, apply right-size discipline (`docs/product.md` §4 Principle 1):
+   - Size: one-off, small pattern, structural.
+   - Smallest level that fixes it: data row, new tag, rule wording, engine code, UI affordance, infrastructure.
+   - Generality: does the fix unlock other latent improvements, or is it brittle to this case.
+3. Pick a level. "No change warranted" is a valid output and gets written as an explicit decision, not silence.
+4. Produce concrete edits:
+   - Data fix: edit the row in `data/dishes.md` or `data/ingredients.md`.
+   - Tag addition: add the tag to relevant dishes + edit the rule text in `docs/engine.md` + edit the engine module + add tests.
+   - Rule change: edit `docs/engine.md` + the engine module + tests + run the simulation harness.
+   - Append the rationale to `data/changelog.md`.
+
+### 1.5 Output
+
+A single PR titled `slow-loop/<date>: <one-line summary of themes>`. PR description includes:
+
+- A short list of clusters processed.
+- A diagnosis card per cluster (problem size, fix level, generality, rejected alternatives).
+- File diffs across `data/`, `docs/engine.md`, `engine/`, and the appended `data/changelog.md`.
+
+### 1.6 On merge
+
+A GitHub Action posts back to Convex:
+- Marks the consumed `comments` as `applied` with the merged PR URL.
+- Marks comments in a "no change warranted" cluster as `reviewed_no_change` with the documented reason.
+- Marks the corresponding `incidents` as resolved.
+
+The action then triggers a redeploy: build emits new typed library/history modules from the updated markdown, Convex picks up the new functions, Vercel rebuilds the frontend. The next generated week uses the new rules.
+
+### 1.7 Right-size examples
+
+| Comment pattern | Right-sized fix | Wrong response (rejected) |
+|---|---|---|
+| "We never cook lauki" appearing 3+ weeks running | Set `Active = No` on lauki dishes in `data/dishes.md`. | Delete the dishes (loses optionality) or wait for more data. |
+| "Too spicy on a sick day" appearing once | No change. Record reason: "single instance, not a pattern; user can swap via the dish-swap affordance." | Add a `low_spice` tag. |
+| "Too spicy" + "want milder dinner when traveling" + "after gym I want light" (5+ weeks) | Add `low_spice` tag to relevant dishes, edit `docs/engine.md` to add the slot rule, update engine module, add tests. | Add a `low_spice` tag to two dishes and ship without updating the rule. |
+| Custom one-off "lemon coriander rice" used 4 weeks running | Add as a new row in `data/dishes.md` with `data/ingredients.md` quantities. | Make the engine learn one-off entries automatically. |
+| Pack size for Paneer feels wrong | Edit pack size in the header table of `data/ingredients.md`. | Add a per-dish override column. |
+
+### 1.8 Anti-patterns the slow loop must not produce
+
+- Sycophantic agreement: "the comment said X so I added a flag for X" without checking pattern size.
+- Generalizing from one or two cases.
+- Adding a column when a row fix or a tag would do.
+- Modifying `docs/engine.md` without paired engine code and test edits.
+- Silent dismissal of a comment without writing a diagnosis card.
+
+## 2. Canonical-doc reconciliation
+
+### 2.1 Why
+
+Canonical docs in `docs/` must read as coherent present-tense specs with no historical seams. Producing that quality of writing while shipping a feature is unreliable, so reconciliation runs as a separate human-triggered pass.
+
+### 2.2 Trigger
+
+Rajat invokes `/reconcile-docs` after a notable run of CHANGELOG entries (typically every two to four weeks, or when something clearly changed the steady state). Sessions can also fire it on demand right after a feature ships.
+
+### 2.3 Inputs the session reads
+
+- `docs/CHANGELOG.md` entries since the last reconciliation (last-run marker stored in `.maintenance-state`, committed).
+- The `features/` directory if anything is active, and any feature spec referenced by recent CHANGELOG entries (`archive/features/<name>.md` after ship).
+- Current `docs/product.md`, `docs/engine.md`, `docs/engineering.md`, `docs/development.md` — to preserve voice and structure.
+- Current code state under `engine/`, `app/`, plus the data files — to cross-check that doc claims match reality.
+
+### 2.4 What the session does
+
+1. Determine the set of CHANGELOG entries since the last run.
+2. For each canonical doc, decide which entries affect it.
+3. For each affected doc, rewrite the relevant sections in place. Not as appends, not as "now also" additions. The doc must still read as one coherent spec after the edit.
+4. Verify factual claims against current code where checkable.
+5. Open a PR with one commit per canonical doc touched.
+6. Update `.maintenance-state` with the new last-run marker.
+
+### 2.5 Per-doc scope
+
+| CHANGELOG entry touches… | Update target |
+|---|---|
+| Product scope, persona, principles, tone, future direction | `docs/product.md` |
+| Rules, slot composition, selection priority, item cap, ingredient consolidation, field reference | `docs/engine.md` |
+| Stack, schema, data layer split, deploy model, hosting, integrations, env vars, image format | `docs/engineering.md` |
+| Session model, worktree workflow, ship workflow, definition of done, diagnosis card, slow-loop trigger, escalation, commit conventions, anti-patterns | `docs/development.md` |
+
+A single shipped change often touches more than one doc. Keeping cross-doc consistency is the reconciliation job's responsibility.
+
+### 2.6 Style rules for canonical docs
+
+Apply to every rewrite the reconciliation job produces.
+
+- **Present tense.** "The slow loop runs when Rajat invokes it." Not "The slow loop will run…" or "Slow loop was added in feat/E1…".
+- **One coherent document.** Section order is stable. Updates happen in place.
+- **No slice, round, sprint, or date references** inside the doc body. The reader should not see the historical seams.
+- **No changelog phrasing.** Strip "previously", "now also", "we used to", "this was added because". The CHANGELOG holds the chronology.
+- **Preserve voice.** Each doc has an established register; read the existing sections as a style anchor before writing new ones.
+- **Cross-reference by section number within a doc**, by canonical filename across docs.
+- **No em dashes.** Use commas, parentheses, semicolons, or sentence breaks.
+
+### 2.7 Anti-patterns to reject before opening the PR
+
+- "Added in feat/X" or "introduced in slow-loop/2026-..."
+- "Previously X, now Y"
+- `(new)` or `(updated)` markers in headings
+- Inline dates like "(as of 2026-06-08)"
+- Past-tense narrative
+
+If a rewrite needs any of these to make sense, the job is doing it wrong. The doc describes end state; the why goes in the CHANGELOG entry or the (now-archived) feature spec.
+
+### 2.8 Conflict handling
+
+- **Two CHANGELOG entries disagree:** latest ships wins; older statement is overwritten in the canonical doc. Flag in PR description.
+- **CHANGELOG disagrees with current code:** code wins; canonical doc updated to match code reality. Flag for human review.
+- **Ambiguous which doc owns a change:** open the PR with the job's best guess; flag for review.
+
+### 2.9 Repository structure consistency check
+
+The reconciliation job also runs mechanical checks against `docs/engineering.md` §14:
+
+- Root inventory: every entry at root must be one of: `.gitignore`, `CLAUDE.md`, `MAINTENANCE.md`, `DECISIONS.md`, `.git`, `.claude`, `.github`, `docs/`, `data/`, `features/`, `engine/`, `app/`, `archive/`.
+- Empty-but-anticipated directories carry `.gitkeep`.
+- Folder naming follows the conventions in `docs/engineering.md` §14.
+
+Mismatches flag in the PR description. The job does not move or rename files autonomously.
+
+## 3. State file
+
+`.maintenance-state` at root holds the input-window marker for the reconciliation job:
+
+```
+last_reconcile: 2026-07-12
+last_slow_loop: 2026-07-13
+```
+
+Committed to the repo. The job history becomes part of `git log` and is visible to anyone who clones.
+
+## 4. First run notes
+
+- The first `/reconcile-docs` run is a no-op: the canonical docs were written fresh as part of the restructure.
+- The first `/slow-loop` run after the app is live will have zero queued comments (none have been logged yet). The session writes a one-line PR or simply exits with a status report; an empty slow loop is a healthy outcome, not a failure.

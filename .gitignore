@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Convex generated
+app/convex/_generated/
+
+# Test output
+coverage/
+.nyc_output/
+
+# Engine build output (typed library + history baked from markdown)
+engine/src/data/library.ts
+engine/src/data/history.ts
+
+# Claude Code session state
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
