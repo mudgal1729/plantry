@@ -63,6 +63,17 @@ Decisions Rajat must approve go in the "Open items" list in `features/phase2.md`
 
 ---
 
+## 2026-06-08 13:12 IST — CI structure-check fix on first push
+
+**Stream:** 0
+**Context:** First push to `mudgal1729/plantry` triggered the placeholder structure check. The check failed because actions/checkout creates `.git` at the workspace root and my regex did not allow it. Fix is a one-line addition to the allowed pattern.
+**Options considered:** (a) fix immediately with a follow-up commit, (b) leave CI red and surface for Rajat to decide.
+**Chosen:** (a). A bug in my own stub check is not a judgment call; the right move is to fix and push. The fix is purely additive (allows `.git`), no behavior change.
+**Reversibility:** trivial.
+**Right-size check:** problem size, one-off; fix level, regex; generality, the allowed set is the canonical root inventory and will need maintenance as the layout evolves; revisit during canonical-doc reconciliation.
+
+---
+
 ## 2026-06-08 14:30 IST — Stack: TypeScript everywhere
 
 **Stream:** cross-stream
