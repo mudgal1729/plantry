@@ -47,6 +47,7 @@ A single PR titled `slow-loop/<date>: <one-line summary of themes>`. PR descript
 ### 1.6 On merge
 
 A GitHub Action posts back to Convex:
+
 - Marks the consumed `comments` as `applied` with the merged PR URL.
 - Marks comments in a "no change warranted" cluster as `reviewed_no_change` with the documented reason.
 - Marks the corresponding `incidents` as resolved.
@@ -55,13 +56,13 @@ The action then triggers a redeploy: build emits new typed library/history modul
 
 ### 1.7 Right-size examples
 
-| Comment pattern | Right-sized fix | Wrong response (rejected) |
-|---|---|---|
-| "We never cook lauki" appearing 3+ weeks running | Set `Active = No` on lauki dishes in `data/dishes.md`. | Delete the dishes (loses optionality) or wait for more data. |
-| "Too spicy on a sick day" appearing once | No change. Record reason: "single instance, not a pattern; user can swap via the dish-swap affordance." | Add a `low_spice` tag. |
+| Comment pattern                                                                         | Right-sized fix                                                                                                      | Wrong response (rejected)                                               |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| "We never cook lauki" appearing 3+ weeks running                                        | Set `Active = No` on lauki dishes in `data/dishes.md`.                                                               | Delete the dishes (loses optionality) or wait for more data.            |
+| "Too spicy on a sick day" appearing once                                                | No change. Record reason: "single instance, not a pattern; user can swap via the dish-swap affordance."              | Add a `low_spice` tag.                                                  |
 | "Too spicy" + "want milder dinner when traveling" + "after gym I want light" (5+ weeks) | Add `low_spice` tag to relevant dishes, edit `docs/engine.md` to add the slot rule, update engine module, add tests. | Add a `low_spice` tag to two dishes and ship without updating the rule. |
-| Custom one-off "lemon coriander rice" used 4 weeks running | Add as a new row in `data/dishes.md` with `data/ingredients.md` quantities. | Make the engine learn one-off entries automatically. |
-| Pack size for Paneer feels wrong | Edit pack size in the header table of `data/ingredients.md`. | Add a per-dish override column. |
+| Custom one-off "lemon coriander rice" used 4 weeks running                              | Add as a new row in `data/dishes.md` with `data/ingredients.md` quantities.                                          | Make the engine learn one-off entries automatically.                    |
+| Pack size for Paneer feels wrong                                                        | Edit pack size in the header table of `data/ingredients.md`.                                                         | Add a per-dish override column.                                         |
 
 ### 1.8 Anti-patterns the slow loop must not produce
 
@@ -99,11 +100,11 @@ Rajat invokes `/reconcile-docs` after a notable run of CHANGELOG entries (typica
 
 ### 2.5 Per-doc scope
 
-| CHANGELOG entry touches… | Update target |
-|---|---|
-| Product scope, persona, principles, tone, future direction | `docs/product.md` |
-| Rules, slot composition, selection priority, item cap, ingredient consolidation, field reference | `docs/engine.md` |
-| Stack, schema, data layer split, deploy model, hosting, integrations, env vars, image format | `docs/engineering.md` |
+| CHANGELOG entry touches…                                                                                                                              | Update target         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Product scope, persona, principles, tone, future direction                                                                                            | `docs/product.md`     |
+| Rules, slot composition, selection priority, item cap, ingredient consolidation, field reference                                                      | `docs/engine.md`      |
+| Stack, schema, data layer split, deploy model, hosting, integrations, env vars, image format                                                          | `docs/engineering.md` |
 | Session model, worktree workflow, ship workflow, definition of done, diagnosis card, slow-loop trigger, escalation, commit conventions, anti-patterns | `docs/development.md` |
 
 A single shipped change often touches more than one doc. Keeping cross-doc consistency is the reconciliation job's responsibility.
@@ -146,7 +147,37 @@ The reconciliation job also runs mechanical checks against `docs/engineering.md`
 
 Mismatches flag in the PR description. The job does not move or rename files autonomously.
 
-## 3. State file
+## 3. Slow-loop mark-applied action
+
+A GitHub Action at `.github/workflows/slow-loop-applied.yml` closes the slow-loop feedback cycle: when a `slow-loop/*` PR merges into `main`, the action calls internal Convex mutations to mark the consumed `comments` rows `applied` or `reviewed_no_change` and the consumed `incidents` rows resolved. Without it, the next `/slow-loop` run would reread the same queued comments and reprocess them.
+
+### 3.1 PR body contract
+
+`/slow-loop` produces a PR body with two sources of truth for the action:
+
+1. A `## Consumed comments by cluster` section with one fenced ` ```cluster ` block per cluster. Each block has three keys: `outcome:` (either `applied` or `reviewed_no_change`, derived from that cluster's diagnosis card "Chosen level"), `comment_ids:` (comma-separated comment ids consumed by this cluster, or `-` if none), and `incident_ids:` (comma-separated, or `-`). The action parses this section to map each id to the correct outcome.
+2. A flat `Consumed comment IDs:` and `Consumed incident IDs:` line for human readability and as a fallback. If the per-cluster section is absent, the action treats every listed comment id as `applied` (conservative default for a PR that touched files).
+
+### 3.2 Convex mutations called
+
+All three live in `app/convex/comments.ts` and are `internalMutation` (not exposed to the browser):
+
+- `comments:markCommentsApplied({ commentIds, resolvedPr })` sets each row `status: "applied"`, `resolvedAt: now`, `resolvedPr: <PR URL>`.
+- `comments:markCommentsReviewedNoChange({ commentIds, resolvedPr })` same shape, status `reviewed_no_change`.
+- `comments:markIncidentsResolved({ incidentIds, resolvedPr })` sets `resolvedAt: now` on each incident row.
+
+Each mutation handles missing or already-resolved ids by inserting a `warn`-severity `incidents` row noting which id was skipped, then continuing. The mutations never throw; the post-merge step is best-effort and must not block a merge.
+
+### 3.3 Debugging a failed run
+
+If the action runs but the next `/slow-loop` invocation still sees stale `queued` comments, follow these steps in order:
+
+1. Open the Actions tab on GitHub, find the `Slow-loop mark applied` run for the merged slow-loop PR, and read the log lines prefixed `[slow-loop-mark-applied]`. They report how many cluster blocks parsed, the applied/reviewed_no_change/incidents counts, and any Convex CLI exit codes.
+2. If the parse counts read zero clusters and zero flat ids, the slow-loop PR body did not include either section; edit `.claude/commands/slow-loop.md` if `/slow-loop`'s output drifted, or hand-correct the comments via `npx convex run --prod comments:markCommentsApplied '{ "commentIds": ["..."], "resolvedPr": "..." }'`.
+3. If the Convex CLI returned non-zero, check the production deployment (`disciplined-chameleon-263`) for incident rows written by the mutations themselves; they record which ids were skipped and why.
+4. The action skips entirely when `pull_request.merged` is false or the head ref is not `slow-loop/*`; that is by design and not a failure.
+
+## 4. State file
 
 `.maintenance-state` at root holds the input-window marker for the reconciliation job:
 
@@ -157,7 +188,7 @@ last_slow_loop: 2026-07-13
 
 Committed to the repo. The job history becomes part of `git log` and is visible to anyone who clones.
 
-## 4. First run notes
+## 5. First run notes
 
 - The first `/reconcile-docs` run is a no-op: the canonical docs were written fresh as part of the restructure.
 - The first `/slow-loop` run after the app is live will have zero queued comments (none have been logged yet). The session writes a one-line PR or simply exits with a status report; an empty slow loop is a healthy outcome, not a failure.

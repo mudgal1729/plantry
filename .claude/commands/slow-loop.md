@@ -80,7 +80,7 @@ For clusters that resolve to no change, the card states problem size, the cluste
 9. **Open the PR.**
    - Branch name: `slow-loop/<today's date>` in `YYYY-MM-DD` form (per `docs/development.md` §2).
    - Title: `slow-loop/<date>: <one-line summary of themes>`. Under 70 characters.
-   - Body opens with the cluster list (one line each), then one diagnosis card per cluster, then "## File changes" enumerating what moved and why, then "## Out of scope" naming clusters deferred. Include a one-line "Consumed comment IDs" and "Consumed incident IDs" list so the merge action can mark them on Convex.
+   - Body opens with the cluster list (one line each), then one diagnosis card per cluster, then "## File changes" enumerating what moved and why, then "## Out of scope" naming clusters deferred. Include a one-line "Consumed comment IDs" and "Consumed incident IDs" list so the merge action can mark them on Convex. Also include a "## Consumed comments by cluster" section: one fenced `cluster` block per cluster, each block containing `outcome: applied` or `outcome: reviewed_no_change` (taken verbatim from the cluster's diagnosis card; the outcome is `reviewed_no_change` if the chosen level is "no change warranted", otherwise `applied`), `comment_ids: <comma-separated list>` (use `-` when none), and `incident_ids: <comma-separated list>` (use `-` when none). The mark-applied GitHub Action parses this section to map outcome to comment ids per cluster.
    - For a dry-run (the `dry-run` argument), produce the cards in the chat as if you were about to open the PR, but do not write files or push.
 
 10. **Hand off.** Post a one-paragraph status to Rajat: "PR opened, here is the URL, here are the themes touched, here is what I deliberately did not."
