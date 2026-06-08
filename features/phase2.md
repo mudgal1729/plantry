@@ -128,7 +128,7 @@ Continuous. Maintains:
 | B Engine | in progress | `../plantry-stream-B` on `feat/B-eligibility` | Slice 1: `eligibility.ts` mirroring `docs/engine.md` §1 + unit tests. Spawned 2026-06-08 in parallel with A slice 2. Schedule, composition, priority, cap, consolidation queued for later slices. |
 | C Convex backend | in progress | `../plantry-stream-C` on `feat/C-schema-currentweek` | Slice 1: schema audit against `docs/engineering.md` §3 + read-only queries (`getCurrentWeek`, `listQueuedComments`, `listIncidents`) + seed script. Spawned 2026-06-08 in parallel with A slice 2 and B. Mutations and auto-recovery middleware queued. |
 | D Frontend | not started | TBD | Starts after Convex client codegen lands (early in C). |
-| E Slow-loop session | in progress | `../plantry-stream-E` on `feat/E-slow-loop-skill` | Slice 1: `.claude/commands/slow-loop.md` + synthetic queued-comments and incidents fixtures. Spawned 2026-06-08 in parallel with A slice 2, B, and C. GitHub Action for marking consumed comments deferred. |
+| E Slow-loop session | in progress | TBD | Slice 1 (slow-loop slash command + dry-run fixtures) shipped 2026-06-08 in PR #4. Next: EM dry-run against `data/test-fixtures/slow-loop/`. Future slice: GitHub Action that marks consumed Convex comments `applied` on merge of a `slow-loop/*` branch. |
 | F Identity + concurrency + deploy | not started | TBD | Integrates near end. Includes automated hook test (followup from PR #1). |
 | G EM scaffolding | continuous | EM | Initial scaffolding shipped with the restructure. |
 
