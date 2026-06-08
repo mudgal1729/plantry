@@ -12,6 +12,12 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-08  Stream A slice 2: menu_history parser + cross-file validators
+
+`MenuHistoryRow` Zod schema in `engine/src/data/schemas.ts` (plus reusable `DayNameSchema` and `IsoDateSchema`). `parseMenuHistory` walks the multi-section `## Week of <date>` structure in `data/menu_history.md` and validates rows with row-named errors. `serializeMenuHistory` round-trips byte-identical. Two cross-file validators in a new `engine/src/data/validators.ts`: `validateMenuHistoryAgainstLibrary` (every dish id in history exists in dishes) and `validatePackSizesUsed` (every tracked ingredient in the pack-size header is used somewhere). Both throw a single message listing every offender. (#7)
+
+Surfaces two follow-ups: (1) `weekArchive` shape in `app/convex/schema.ts` does not currently match `MenuHistoryRow` casing or `weekStart` placement; spec says they should mirror; reconciliation deferred. (2) Live `data/menu_history.md` references dish id 7 (Rajma) that is absent from `data/dishes.md`; validator caught it; route to slow-loop.
+
 ## 2026-06-08  Stream E slice 1: slow-loop slash command + dry-run fixtures
 
 Defines `/slow-loop` as a Claude Code slash command at `.claude/commands/slow-loop.md`. The prompt inlines the right-size discipline (`docs/product.md` §4 Principle 1) and the diagnosis card format (`docs/development.md` §5), supports a `--fixture <path>` argument for EM dry-runs before real comments accumulate, and names the production Convex deployment (`disciplined-chameleon-263`) explicitly. Adds synthetic queued-comments and incidents JSON fixtures at `data/test-fixtures/slow-loop/` matching the `comments` and `incidents` table shapes in `app/convex/schema.ts`, including a cross-input cluster (paneer fatigue across two comments plus a recency incident) so the EM can exercise clustering judgement during dry-run. (#4)
