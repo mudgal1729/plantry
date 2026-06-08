@@ -36,3 +36,11 @@ export type {
   WeekdaySubstitutionForm,
   WeekdaySubstitutionDecision,
 } from "./composition.js";
+export {
+  rankCandidates,
+  byLongestUnused,
+  byNoSameDayPrimaryIngredient,
+  byConsolidationStub,
+  byPreferredYes,
+} from "./priority.js";
+export type { RankCandidatesArgs, ConsolidationContext } from "./priority.js";
