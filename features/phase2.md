@@ -124,11 +124,11 @@ Continuous. Maintains:
 | 0.5 Convex + Vercel project init | shipped | EM | PR #2 merged. Convex prod + dev deployments live; Vercel prod deploy live; domains added to Vercel project (DNS verification pending). |
 | 0.6 Deploy CI step | shipped | EM | GH-Vercel integration handles frontend on push-to-main. New `Deploy Convex` workflow handles schema/functions via `CONVEX_DEPLOY_KEY`. Path-filtered to `app/convex/`, `engine/`, `data/`. |
 | 0.7 DNS for custom domains | shipped | Vercel-Cloudflare integration | `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` both serve 200 OK over HTTPS. Vercel auto-configured via the Cloudflare integration (no manual records added). |
-| A Data layer | in progress | TBD | Slice 1 shipped in PR #3. Slice 2 (menu_history parser + cross-file validators) shipped 2026-06-08 in PR #7. Next: build-pipeline emit of `library.ts` / `history.ts` (slice 3). |
-| B Engine | in progress | TBD | Slice 1 (eligibility mirroring `docs/engine.md` §1) shipped 2026-06-08 in PR #5. Schedule, composition, priority, cap, consolidation, the `generateWeek` and `rankCandidatesForSlot` APIs, and the simulation harness queued for later slices. |
+| A Data layer | in progress | `../plantry-stream-A` on `feat/A-library-bake` | Slices 1 (PR #3) and 2 (PR #7) shipped. Slice 3 (build-pipeline bake of `library.ts` and `history.ts` + CI hook) spawned 2026-06-08. |
+| B Engine | in progress | `../plantry-stream-B` on `feat/B-schedule` | Slice 1 (eligibility) shipped in PR #5. Slice 2 (schedule mirroring `docs/engine.md` §2) spawned 2026-06-08. Composition, priority, cap, consolidation, `generateWeek`, `rankCandidatesForSlot`, and the simulation harness queued. |
 | C Convex backend | in progress | TBD | Slice 1 (schema audit, three read-only queries, dev seed mutation, generated client checked in) shipped 2026-06-08 in PR #6. Next: mutations (`swapDish`, `addCustomOneOff`, `addComment`, `finalizeWeek`) once Stream B engine integration covers eligible-dish suggestions and week validation. Auto-recovery middleware queued. |
-| D Frontend | not started | TBD | Starts after Convex client codegen lands (early in C). |
-| E Slow-loop session | in progress | TBD | Slice 1 (slow-loop slash command + dry-run fixtures) shipped 2026-06-08 in PR #4. Next: EM dry-run against `data/test-fixtures/slow-loop/`. Future slice: GitHub Action that marks consumed Convex comments `applied` on merge of a `slow-loop/*` branch. |
+| D Frontend | held | TBD | Convex client codegen now exists. Holding spawn until §5 item 12 (`weekArchive` shape reconciliation) is resolved so D renders against the agreed shape rather than refactoring after. |
+| E Slow-loop session | in progress | `../plantry-stream-E` on `feat/E-comments-applied-action` | Slice 1 (slash command + fixtures) shipped in PR #4. Slice 2 (GitHub Action that marks consumed comments + the two internal mutations it calls) spawned 2026-06-08. EM dry-run against the fixtures still queued. |
 | F Identity + concurrency + deploy | not started | TBD | Integrates near end. Includes automated hook test (followup from PR #1). |
 | G EM scaffolding | continuous | EM | Initial scaffolding shipped with the restructure. |
 
@@ -151,6 +151,9 @@ Items the EM cannot decide alone. Surfaced in batches at natural checkpoints, ne
 | 9 | Cloudflare CNAMEs | Rajat to add in Cloudflare dashboard: `plantry` -> `cname.vercel-dns.com` (proxied off), `plantry-dev` -> `cname.vercel-dns.com` (proxied off). Or drop a CF API token for EM to set via API. | **Pending Rajat.** |
 | 10 | Vercel token | Generated at vercel.com/account/tokens (no CLI). `gh secret set VERCEL_TOKEN` after. | **Pending Rajat.** |
 | 11 | GH Actions deploy step | After items 9 and 10 land, EM wires `convex deploy --yes` + `vercel deploy --prod` into the CI workflow on push-to-main. | Blocked on 9 and 10. |
+| 12 | `weekArchive` vs `MenuHistoryRow` shape | Align Convex schema to engine: `weekArchive.rows[].day` becomes `Monday` through `Sunday` enum, `meal` becomes `Breakfast` or `Lunch`, drop the per-row `weekStart` since it lives on the parent doc anyway. `currentWeek.slots[].day` and `.meal` stay in their current short/lowercase form, since the live week is internal state, not a snapshot of the markdown. This makes the data layer split cleanly: markdown (and the engine schemas that mirror it) is canonical for archived rows, Convex translates only when finalizing a week. Small spec edit in `docs/engineering.md` §3. No data exists yet, so the migration cost is zero today and unrecoverable later. | **Pending Rajat.** Holds Stream D until resolved (D would otherwise hard-code the wrong shape). |
+| 13 | Live `data/menu_history.md` references dish id 7 (Rajma) absent from `data/dishes.md` | Route via the next slow-loop dry-run: either re-add the dish or re-seed history. Cross-file validator catches it today; CI does not yet treat it as fatal. | Pending; not blocking any stream. |
+| 14 | `MAINTENANCE.md` lines 1, 88, 89 contain em-dashes (project style is no em-dashes) | Docs maintenance pass after the next slice ships. | Pending; cosmetic. |
 
 ## 6. Risks and mitigations
 
