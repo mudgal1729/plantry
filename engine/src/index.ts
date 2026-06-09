@@ -55,3 +55,5 @@ export {
   FRESH_PRODUCE_ITEMS,
 } from "./consolidation.js";
 export type { IngredientLedger, IngredientLedgerEntry } from "./consolidation.js";
+export { applyCap, WEEKDAY_CAP, SATURDAY_CAP } from "./cap.js";
+export type { SlotPick, ApplyCapArgs, ApplyCapResult } from "./cap.js";
