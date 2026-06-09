@@ -57,3 +57,11 @@ export {
 export type { IngredientLedger, IngredientLedgerEntry } from "./consolidation.js";
 export { applyCap, WEEKDAY_CAP, SATURDAY_CAP } from "./cap.js";
 export type { SlotPick, ApplyCapArgs, ApplyCapResult } from "./cap.js";
+export { generateWeek, rankCandidatesForSlot } from "./generateWeek.js";
+export type {
+  GenerateWeekArgs,
+  GeneratedWeek,
+  GeneratedWeekDay,
+  GeneratedWeekSlot,
+  RankCandidatesForSlotArgs,
+} from "./generateWeek.js";
