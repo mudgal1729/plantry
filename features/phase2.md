@@ -177,7 +177,7 @@ Phase 2 ships when:
 - [x] Either user can drop in a custom one-off; one-offs surface clearly. (PR #15 `addCustomOneOff` + PR #17 inline `SlotEditor`)
 - [x] Either user can comment; comments appear queued in Convex. (PR #15 `addComment` + PR #17 `CommentComposer` + `CommentsList`)
 - [x] Either user sees the week's grocery list, grouped per `docs/product.md` §3 item 3. (Milestone 2.3 shipped 2026-06-09 in PR #23 + #24; Rajat verified rendering on prod.)
-- [ ] At least one slow-loop PR has been merged end to end (even if it's the test-fixture run). (Milestone 2.4: EM dry-run still queued)
+- [x] At least one slow-loop PR has been merged end to end (even if it's the test-fixture run). (Milestone 2.4 done 2026-06-09 in PR #25; `slow-loop-applied.yml` GitHub Action also ran clean.)
 - [ ] CHANGELOG entry written.
 - [ ] This file moves to `archive/features/phase2.md`.
 - [ ] `CLAUDE.md`'s "Currently building" line updates to `_none_`.
