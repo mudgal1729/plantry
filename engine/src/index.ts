@@ -65,3 +65,5 @@ export type {
   GeneratedWeekSlot,
   RankCandidatesForSlotArgs,
 } from "./generateWeek.js";
+export { aggregateGroceryList, GROCERY_GROUPS } from "./groceryList.js";
+export type { GroceryGroup, GroceryItem, GroceryList } from "./groceryList.js";
