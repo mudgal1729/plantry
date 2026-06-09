@@ -125,9 +125,9 @@ Continuous. Maintains:
 | 0.6 Deploy CI step | shipped | EM | GH-Vercel integration handles frontend on push-to-main. New `Deploy Convex` workflow handles schema/functions via `CONVEX_DEPLOY_KEY`. Path-filtered to `app/convex/`, `engine/`, `data/`. |
 | 0.7 DNS for custom domains | shipped | Vercel-Cloudflare integration | `plantry.mudgal.xyz` and `plantry-dev.mudgal.xyz` both serve 200 OK over HTTPS. Vercel auto-configured via the Cloudflare integration (no manual records added). |
 | A Data layer | shipped | — | Slices 1 (PR #3), 2 (PR #7), and 3 (PR #10, bake + CI hook) all shipped 2026-06-08. Stream A's three-slice arc is complete. |
-| B Engine | in progress | TBD | Slices 1-7 shipped: eligibility, schedule, composition, priority, consolidation, cap, and the `generateWeek` + `rankCandidatesForSlot` public APIs composing §1-§6. Only slice 8 (5-week simulation harness replaying the four known bugs from `archive/learnings-v0.md` + property tests) remains. |
-| C Convex backend | in progress | TBD | Slices 1-4 shipped. `getGroceryList` next (Milestone 2.3 ship requirement; depends on engine's consolidation ledger surfacing). `finalizeWeek` and auto-recovery middleware queued. |
-| D Frontend | in progress | TBD | Slices 1-3 shipped (read-only week view, write affordances, swap UI). Grocery list rendering next (Milestone 2.3). Menu image (PNG) per `docs/product.md` §3 item 2 still queued as a follow-up. |
+| B Engine | in progress | `../plantry-stream-B` on `feat/B-grocery-aggregator` | Slices 1-7 shipped. Slice 8 (`aggregateGroceryList` per `docs/product.md` §3 item 3, with pack-size rounding + categorization) spawned 2026-06-09. Renumbering: the 5-week simulation harness moves to slice 9. |
+| C Convex backend | in progress | bundled into `../plantry-stream-D` on `feat/D-grocery-list-and-query` | Slices 1-4 shipped. Slice 5 (`getGroceryList` query wrapping the engine aggregator) spawned 2026-06-09, bundled with D slice 4. `finalizeWeek` and auto-recovery middleware queued. |
+| D Frontend | in progress | `../plantry-stream-D` on `feat/D-grocery-list-and-query` | Slices 1-3 shipped. Slice 4 (grocery list rendering bundled with C slice 5 in the same PR) spawned 2026-06-09. Menu image (PNG) per `docs/product.md` §3 item 2 still queued as a follow-up. |
 | E Slow-loop session | in progress | TBD | Slice 1 (slash command + fixtures) shipped in PR #4. Slice 2 (GitHub Action + three Convex mutations) shipped 2026-06-08 in PR #9. EM dry-run against the fixtures still queued; first real slow-loop run still pending Rajat. |
 | F Identity + concurrency + deploy | not started | TBD | Integrates near end. Includes automated hook test (followup from PR #1). |
 | G EM scaffolding | continuous | EM | Initial scaffolding shipped with the restructure. |
@@ -173,7 +173,7 @@ Phase 2 ships when:
 - [x] `plantry.mudgal.xyz` serves the PWA over HTTPS. (Stream 0.7)
 - [x] Identity picker is stored per device. Rajat installed on his phone; Tuhina onboarding still pending. (Stream D slice 1 + slice 2 identity Convex sync)
 - [x] Current week renders end to end (engine generates, Convex persists, frontend displays). Confirmed 2026-06-09 after `generateCurrentWeek` smoke-test + Rajat verified prod render. (Milestone 2.1: PR #18 cap, PR #19 generateWeek + rankCandidatesForSlot, PR #20 generateCurrentWeek)
-- [ ] Either user can swap a dish; the other sees the swap within a few seconds. (Milestone 2.2 shipped 2026-06-09 in PR #21 + #22; EM verification on prod after Deploy Convex completes ticks this box.)
+- [x] Either user can swap a dish; the other sees the swap within a few seconds. (Milestone 2.2 shipped 2026-06-09 in PR #21 + #22; Rajat verified swap end-to-end on prod.)
 - [x] Either user can drop in a custom one-off; one-offs surface clearly. (PR #15 `addCustomOneOff` + PR #17 inline `SlotEditor`)
 - [x] Either user can comment; comments appear queued in Convex. (PR #15 `addComment` + PR #17 `CommentComposer` + `CommentsList`)
 - [ ] Either user sees the week's grocery list, grouped per `docs/product.md` §3 item 3. (Milestone 2.3, next after swap verification.)
