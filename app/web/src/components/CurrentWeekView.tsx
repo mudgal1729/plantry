@@ -8,6 +8,7 @@ import { getCachedWeek, setCachedWeek } from "../lib/storage.js";
 import { SlotEditor } from "./SlotEditor.js";
 import { CommentComposer, type CommentTarget } from "./CommentComposer.js";
 import { CommentsList, type PendingLocalComment } from "./CommentsList.js";
+import { GroceryList } from "./GroceryList.js";
 
 const DISH_NAME_BY_ID = new Map<number, string>(dishes.map((d) => [d.id, d.name]));
 
@@ -62,10 +63,7 @@ function slotKey(day: string, meal: string): string {
 }
 
 export function CurrentWeekView({ identity }: CurrentWeekViewProps) {
-  const result = useQuery(anyApi.queries.week.getCurrentWeek, {}) as
-    | CurrentWeek
-    | null
-    | undefined;
+  const result = useQuery(anyApi.queries.week.getCurrentWeek, {}) as CurrentWeek | null | undefined;
 
   const cached = useMemo(() => getCachedWeek(), []);
 
@@ -78,10 +76,13 @@ export function CurrentWeekView({ identity }: CurrentWeekViewProps) {
   if (result === undefined) {
     if (cached) {
       return (
-        <section className="week">
-          <div className="offline-banner">Showing last known menu (offline).</div>
-          <WeekBody week={cached.week} identity={identity} interactive={false} />
-        </section>
+        <>
+          <section className="week">
+            <div className="offline-banner">Showing last known menu (offline).</div>
+            <WeekBody week={cached.week} identity={identity} interactive={false} />
+          </section>
+          <GroceryList weekStart={cached.week.weekStart} />
+        </>
       );
     }
     return (
@@ -100,9 +101,12 @@ export function CurrentWeekView({ identity }: CurrentWeekViewProps) {
   }
 
   return (
-    <section className="week">
-      <WeekBody week={result} identity={identity} interactive />
-    </section>
+    <>
+      <section className="week">
+        <WeekBody week={result} identity={identity} interactive />
+      </section>
+      <GroceryList weekStart={result.weekStart} />
+    </>
   );
 }
 
@@ -216,9 +220,7 @@ function WeekBody({
                   <button
                     type="button"
                     className="day-card__comment-link"
-                    onClick={() =>
-                      setComposingFor(dayComposerOpen ? null : dayCommentKey)
-                    }
+                    onClick={() => setComposingFor(dayComposerOpen ? null : dayCommentKey)}
                   >
                     {dayComposerOpen ? "Cancel" : "Comment on this day"}
                     {dayCount > 0 && <span className="badge">{dayCount}</span>}
@@ -317,9 +319,7 @@ function WeekBody({
           );
         })}
       </ol>
-      {interactive && (
-        <CommentsList weekStart={week.weekStart} pendingLocal={pendingComments} />
-      )}
+      {interactive && <CommentsList weekStart={week.weekStart} pendingLocal={pendingComments} />}
     </>
   );
 }

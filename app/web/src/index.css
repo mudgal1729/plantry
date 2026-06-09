@@ -719,3 +719,73 @@ a {
   color: var(--ink);
   white-space: pre-wrap;
 }
+
+.grocery-list {
+  margin-top: 16px;
+  background: white;
+  border: 1px solid var(--grey-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grocery-list--loading {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.grocery-list__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.grocery-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.grocery-group__title {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+.grocery-group__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grocery-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--grey-line);
+  font-size: 14px;
+}
+
+.grocery-group__items .grocery-item:first-child {
+  border-top: 0;
+}
+
+.grocery-item__name {
+  color: var(--ink);
+}
+
+.grocery-item__qty {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
