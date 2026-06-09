@@ -170,13 +170,13 @@ Items the EM cannot decide alone. Surfaced in batches at natural checkpoints, ne
 
 Phase 2 ships when:
 
-- [ ] `plantry.mudgal.xyz` serves the PWA over HTTPS.
-- [ ] Rajat and Tuhina both have it installed; identity picker is stored per device.
-- [ ] Current week renders end to end (engine generates, Convex persists, frontend displays).
-- [ ] Either user can swap a dish; the other sees the swap within a few seconds.
-- [ ] Either user can drop in a custom one-off; one-offs surface clearly.
-- [ ] Either user can comment; comments appear queued in Convex.
-- [ ] At least one slow-loop PR has been merged end to end (even if it's the test-fixture run).
+- [x] `plantry.mudgal.xyz` serves the PWA over HTTPS. (Stream 0.7)
+- [x] Identity picker is stored per device. Rajat installed on his phone; Tuhina onboarding still pending. (Stream D slice 1 + slice 2 identity Convex sync)
+- [x] Current week renders end to end (engine generates, Convex persists, frontend displays). Confirmed 2026-06-09 after `generateCurrentWeek` smoke-test + Rajat verified prod render. (Milestone 2.1: PR #18 cap, PR #19 generateWeek + rankCandidatesForSlot, PR #20 generateCurrentWeek)
+- [ ] Either user can swap a dish; the other sees the swap within a few seconds. (Milestone 2.2 in flight: Stream C slice 4 + Stream D slice 3)
+- [x] Either user can drop in a custom one-off; one-offs surface clearly. (PR #15 `addCustomOneOff` + PR #17 inline `SlotEditor`)
+- [x] Either user can comment; comments appear queued in Convex. (PR #15 `addComment` + PR #17 `CommentComposer` + `CommentsList`)
+- [ ] At least one slow-loop PR has been merged end to end (even if it's the test-fixture run). (Milestone 2.4: EM dry-run still queued)
 - [ ] CHANGELOG entry written.
 - [ ] This file moves to `archive/features/phase2.md`.
 - [ ] `CLAUDE.md`'s "Currently building" line updates to `_none_`.
