@@ -28,7 +28,7 @@ Read order by task:
 
 ## Currently building
 
-> _none_
+> `features/manual-changes.md` — Stream I. Persist every manual swap and custom one-off with a required user reason; feed the log into the slow loop so rule redesign is grounded in observed behavior.
 
 When no feature is active, this line reads "_none_".
 

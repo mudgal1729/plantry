@@ -19,6 +19,17 @@ Decisions Rajat must approve go in the "Open items" list in `features/phase2.md`
 
 ---
 
+## 2026-06-10 — Stream H §6a dropped; Stream I (manual-changes log) supersedes it
+
+**Stream:** I (post-v1)
+**Context:** Stream H deferred §6a (incident on rule-violating swap) as a tracked follow-up. On reflection that follow-up was the wrong shape: it presupposed the engine's §3 rules are correct and the user's swap is the deviation, which contradicts the Stream H decision (non-restrictive picker; the rules are what the slow loop redesigns). Rajat reframed it: the slow loop needs a log of every manual change a user makes (swap or custom one-off), with a user-provided reason, so rule redesign is grounded in observed behavior rather than assumed rules.
+**Options considered:** (a) keep §6a as scoped: detect a §3 violation at swap time and write an `incidents` row. (b) drop §6a entirely; rely on the existing `currentWeek.slots[].dishes[].source` + `author` fields plus the `comments` table as slow-loop signal. (c) drop §6a; add a new append-only `manualChanges` table that records before/after/reason for every swap and custom one-off, and consume it in the slow loop alongside comments.
+**Chosen:** (c). (a) is incoherent with Principle 4 (fast loop permissive; rules are the redesign target, not the fixed ground truth). (b) loses the trajectory (intermediate swaps disappear) and has no reason field, so the slow loop has to guess at intent. (c) gives the slow loop a complete record of what users actually changed and why, without flagging any swap as "wrong" up-front.
+**Reversibility:** medium-low. Schema add is reversible (drop the table). Mutation contract additions (`reason: string`) are a breaking change for any future external caller; today the only callers are the SlotEditor swap/custom panes so the blast radius is small. UI affordance (required reason input + chips) is fast-loop reversible.
+**Right-size check (per `docs/product.md` §4):** problem size structural (new signal channel for the slow loop); fix level new table + mutation contract + UI affordance (smallest level that captures trajectory + intent); generality: this is the canonical pattern for any future "user override" signal type (custom labels, day reorder, week-level overrides) — they all become `manualChanges` rows. Diagnosis card on the PR will note this is an additive Convex schema change per [[convex-schema-breaking-change]], so no wipe-and-regenerate sequence is needed.
+
+---
+
 ## 2026-06-09 (post-v1, revision) — Stream H swap picker is non-restrictive
 
 **Stream:** H
