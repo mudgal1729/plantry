@@ -226,7 +226,7 @@ export const getSlotAlternatives = query({
  * Replaces one position within one (day, meal) slot of `currentWeek` with a
  * different library dish. Drives the swap UI's confirmation step.
  *
- * Signature (per `features/multi-dish-slots.md`):
+ * Signature (per `features/multi-dish-slots.md` + `features/manual-changes.md`):
  *   swapDish({
  *     author: "rajat" | "tuhina",
  *     weekStart: string,
@@ -235,6 +235,7 @@ export const getSlotAlternatives = query({
  *     position: number,
  *     newDishId: number,
  *     version: number,
+ *     reason: string,                              // required, trimmed
  *   }) => { ok: true; version: number }
  *      | { ok: false; reason: "version-mismatch" | "no-current-week"
  *                           | "no-such-slot" | "no-such-position"
@@ -244,6 +245,7 @@ export const getSlotAlternatives = query({
  *
  * Behavior (non-restrictive):
  *   - Validates `author`; missing/empty author throws ConvexError.
+ *   - Trims `reason`; empty -> ConvexError("reason must not be empty after trimming").
  *   - Looks up `currentWeek` by `weekStart`. Missing -> `no-current-week`.
  *   - Optimistic concurrency: `row.version !== args.version` ->
  *     `version-mismatch`.
@@ -260,6 +262,11 @@ export const getSlotAlternatives = query({
  *   - Patches `slot.dishes[position]` to `{ dishId: newDishId, customLabel:
  *     null, source: "swapped", author, updatedAt: Date.now() }`. The rest of
  *     the slot's dishes are untouched.
+ *   - On success ALSO inserts a `manualChanges` row in the same Convex
+ *     transaction (atomic: both writes land or neither does) capturing the
+ *     `before` and `after` pick state and the trimmed `reason`. The slot's
+ *     state immediately before this mutation seeds `before` (NOT the original
+ *     generated pick; reflects the trajectory).
  */
 export const swapDish = mutation({
   args: {
@@ -277,6 +284,7 @@ export const swapDish = mutation({
     position: v.number(),
     newDishId: v.number(),
     version: v.number(),
+    reason: v.string(),
   },
   handler: async (
     ctx,
@@ -296,6 +304,10 @@ export const swapDish = mutation({
       }
   > => {
     assertAuthor(args.author);
+    const trimmedReason = args.reason.trim();
+    if (trimmedReason.length === 0) {
+      throw new ConvexError("reason must not be empty after trimming");
+    }
 
     const week = await ctx.db
       .query("currentWeek")
@@ -355,6 +367,30 @@ export const swapDish = mutation({
     await ctx.db.patch(week._id, {
       slots: newSlots,
       version: newVersion,
+    });
+
+    // Append-only manual-changes log. Same Convex transaction as the patch
+    // above, so both land or neither does. See `features/manual-changes.md`.
+    await ctx.db.insert("manualChanges", {
+      createdAt: now,
+      author: args.author,
+      weekStart: args.weekStart,
+      day: args.day,
+      meal: args.meal,
+      position: args.position,
+      changeKind: "swap",
+      before: {
+        dishId: existingPick.dishId,
+        customLabel: existingPick.customLabel,
+      },
+      after: {
+        dishId: args.newDishId,
+        customLabel: null,
+      },
+      reason: trimmedReason,
+      status: "queued",
+      resolvedAt: null,
+      resolvedPr: null,
     });
 
     return { ok: true, version: newVersion };

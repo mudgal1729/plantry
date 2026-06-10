@@ -1,0 +1,46 @@
+[
+  {
+    "_id": "mc_fixture_001",
+    "createdAt": 1717804800000,
+    "author": "rajat",
+    "weekStart": "2026-06-01",
+    "day": "Mon",
+    "meal": "lunch",
+    "position": 0,
+    "changeKind": "swap",
+    "before": {
+      "dishId": 3,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": 47,
+      "customLabel": null
+    },
+    "reason": "Bored of palak paneer; want a change of gravy this week.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_002",
+    "createdAt": 1717891200000,
+    "author": "tuhina",
+    "weekStart": "2026-06-01",
+    "day": "Wed",
+    "meal": "breakfast",
+    "position": 0,
+    "changeKind": "custom",
+    "before": {
+      "dishId": 21,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": null,
+      "customLabel": "leftover khichdi from last night"
+    },
+    "reason": "Missing ingredient; ran out of poha overnight and want to finish the khichdi.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  }
+]

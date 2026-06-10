@@ -39,22 +39,31 @@ if (!DRY_RUN && !convexKey) {
  *   ```cluster
  *   outcome: applied
  *   comment_ids: abc123, def456
+ *   manual_change_ids: -
  *   incident_ids: -
  *   ```
  *
  *   ```cluster
  *   outcome: reviewed_no_change
  *   comment_ids: ghi789
+ *   manual_change_ids: mno345
  *   incident_ids: jkl012
  *   ```
  *
- * Returns { applied: string[], reviewedNoChange: string[], incidents: string[] }
- * with deduped ids. Outcome must be one of "applied" or "reviewed_no_change";
- * any other value skips the cluster and logs a warning.
+ * Returns {
+ *   appliedComments, reviewedNoChangeComments,
+ *   appliedManualChanges, reviewedNoChangeManualChanges,
+ *   incidents
+ * } with deduped ids. Outcome must be one of "applied" or "reviewed_no_change";
+ * any other value skips the cluster's comment and manual-change ids and logs a
+ * warning. The `manual_change_ids` field is optional in the fence to preserve
+ * backward compatibility with PRs authored before Stream I landed.
  */
 function parseClusters(body) {
-  const applied = new Set();
-  const reviewedNoChange = new Set();
+  const appliedComments = new Set();
+  const reviewedNoChangeComments = new Set();
+  const appliedManualChanges = new Set();
+  const reviewedNoChangeManualChanges = new Set();
   const incidents = new Set();
 
   const re = /```cluster\s*\n([\s\S]*?)```/g;
@@ -73,25 +82,30 @@ function parseClusters(body) {
     }
     const outcome = (fields.outcome ?? "").toLowerCase();
     const commentIds = parseIdList(fields.comment_ids ?? "");
+    const manualChangeIds = parseIdList(fields.manual_change_ids ?? "");
     const incidentIds = parseIdList(fields.incident_ids ?? "");
 
     if (outcome === "applied") {
-      for (const id of commentIds) applied.add(id);
+      for (const id of commentIds) appliedComments.add(id);
+      for (const id of manualChangeIds) appliedManualChanges.add(id);
     } else if (outcome === "reviewed_no_change") {
-      for (const id of commentIds) reviewedNoChange.add(id);
+      for (const id of commentIds) reviewedNoChangeComments.add(id);
+      for (const id of manualChangeIds) reviewedNoChangeManualChanges.add(id);
     } else {
       console.log(
         `[slow-loop-mark-applied] cluster #${clusterCount}: unknown outcome ${JSON.stringify(
           fields.outcome,
-        )}; skipping its comment ids.`,
+        )}; skipping its comment and manual-change ids.`,
       );
     }
     for (const id of incidentIds) incidents.add(id);
   }
 
   return {
-    applied: [...applied],
-    reviewedNoChange: [...reviewedNoChange],
+    appliedComments: [...appliedComments],
+    reviewedNoChangeComments: [...reviewedNoChangeComments],
+    appliedManualChanges: [...appliedManualChanges],
+    reviewedNoChangeManualChanges: [...reviewedNoChangeManualChanges],
     incidents: [...incidents],
     clusterCount,
   };
@@ -109,17 +123,21 @@ function parseIdList(raw) {
 /**
  * Fallback parser. Reads the flat lines
  *   Consumed comment IDs: a, b, c
+ *   Consumed manual-change IDs: m, n
  *   Consumed incident IDs: d, e
- * Returns { commentIds, incidentIds }. Used only when the per-cluster section
- * is absent; we cannot tell outcome from these, so the action treats all
- * comments as `applied` (conservative default: a PR that touches files is more
- * likely to have applied than no-change clusters).
+ * Returns { commentIds, manualChangeIds, incidentIds }. Used only when the
+ * per-cluster section is absent; we cannot tell outcome from these, so the
+ * action treats all comments AND all manual changes as `applied` (conservative
+ * default: a PR that touches files is more likely to have applied than
+ * no-change clusters).
  */
 function parseFlatLists(body) {
   const commentLine = body.match(/^Consumed comment IDs:\s*(.*)$/im);
+  const manualChangeLine = body.match(/^Consumed manual-change IDs:\s*(.*)$/im);
   const incidentLine = body.match(/^Consumed incident IDs:\s*(.*)$/im);
   return {
     commentIds: commentLine ? parseIdList(commentLine[1]) : [],
+    manualChangeIds: manualChangeLine ? parseIdList(manualChangeLine[1]) : [],
     incidentIds: incidentLine ? parseIdList(incidentLine[1]) : [],
   };
 }
@@ -127,31 +145,48 @@ function parseFlatLists(body) {
 const clusters = parseClusters(prBody);
 console.log(`[slow-loop-mark-applied] parsed ${clusters.clusterCount} cluster block(s)`);
 
-let appliedIds = clusters.applied;
-let reviewedNoChangeIds = clusters.reviewedNoChange;
+let appliedCommentIds = clusters.appliedComments;
+let reviewedNoChangeCommentIds = clusters.reviewedNoChangeComments;
+let appliedManualChangeIds = clusters.appliedManualChanges;
+let reviewedNoChangeManualChangeIds = clusters.reviewedNoChangeManualChanges;
 let incidentIds = clusters.incidents;
 
 if (clusters.clusterCount === 0) {
   const flat = parseFlatLists(prBody);
-  if (flat.commentIds.length === 0 && flat.incidentIds.length === 0) {
+  if (
+    flat.commentIds.length === 0 &&
+    flat.manualChangeIds.length === 0 &&
+    flat.incidentIds.length === 0
+  ) {
     console.log("[slow-loop-mark-applied] no cluster blocks and no flat ID lines; exiting clean.");
     process.exit(0);
   }
   console.log(
-    `[slow-loop-mark-applied] cluster blocks absent; falling back to flat lists. Treating ${flat.commentIds.length} comment(s) as applied.`,
+    `[slow-loop-mark-applied] cluster blocks absent; falling back to flat lists. Treating ${flat.commentIds.length} comment(s) and ${flat.manualChangeIds.length} manual-change(s) as applied.`,
   );
-  appliedIds = flat.commentIds;
-  reviewedNoChangeIds = [];
+  appliedCommentIds = flat.commentIds;
+  reviewedNoChangeCommentIds = [];
+  appliedManualChangeIds = flat.manualChangeIds;
+  reviewedNoChangeManualChangeIds = [];
   incidentIds = flat.incidentIds;
 }
 
 console.log(
-  `[slow-loop-mark-applied] applied=${appliedIds.length} reviewed_no_change=${reviewedNoChangeIds.length} incidents=${incidentIds.length}`,
+  `[slow-loop-mark-applied] comments: applied=${appliedCommentIds.length} reviewed_no_change=${reviewedNoChangeCommentIds.length}; manual-changes: applied=${appliedManualChangeIds.length} reviewed_no_change=${reviewedNoChangeManualChangeIds.length}; incidents=${incidentIds.length}`,
 );
 
 if (DRY_RUN) {
   console.log("[slow-loop-mark-applied] dry-run; not calling Convex.");
-  console.log(JSON.stringify({ appliedIds, reviewedNoChangeIds, incidentIds, prUrl }));
+  console.log(
+    JSON.stringify({
+      appliedCommentIds,
+      reviewedNoChangeCommentIds,
+      appliedManualChangeIds,
+      reviewedNoChangeManualChangeIds,
+      incidentIds,
+      prUrl,
+    }),
+  );
   process.exit(0);
 }
 
@@ -169,15 +204,27 @@ function runConvex(fnName, args) {
   }
 }
 
-if (appliedIds.length > 0) {
+if (appliedCommentIds.length > 0) {
   runConvex("comments:markCommentsApplied", {
-    commentIds: appliedIds,
+    commentIds: appliedCommentIds,
     resolvedPr: prUrl,
   });
 }
-if (reviewedNoChangeIds.length > 0) {
+if (reviewedNoChangeCommentIds.length > 0) {
   runConvex("comments:markCommentsReviewedNoChange", {
-    commentIds: reviewedNoChangeIds,
+    commentIds: reviewedNoChangeCommentIds,
+    resolvedPr: prUrl,
+  });
+}
+if (appliedManualChangeIds.length > 0) {
+  runConvex("manualChangesMutations:markManualChangesApplied", {
+    manualChangeIds: appliedManualChangeIds,
+    resolvedPr: prUrl,
+  });
+}
+if (reviewedNoChangeManualChangeIds.length > 0) {
+  runConvex("manualChangesMutations:markManualChangesReviewedNoChange", {
+    manualChangeIds: reviewedNoChangeManualChangeIds,
     resolvedPr: prUrl,
   });
 }

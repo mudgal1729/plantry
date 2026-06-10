@@ -90,6 +90,51 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_weekStart", ["attachedTo.weekStart"]),
 
+  // Append-only log of manual edits the user makes to the live week. Every
+  // `swapDish` and `addCustomOneOff` mutation inserts a row here in the same
+  // transaction, recording the slot's state immediately before the change
+  // (`before`) and the state landed (`after`), the freeform `reason` the user
+  // typed, and the standard slow-loop status lifecycle. Distinct from
+  // `comments` because the signal is different: comments are explicit feedback,
+  // manual changes are observed behavior. The slow loop reads both as fuel for
+  // rule redesign (`features/manual-changes.md`).
+  manualChanges: defineTable({
+    createdAt: v.number(),
+    author: v.union(v.literal("rajat"), v.literal("tuhina")),
+    weekStart: v.string(), // ISO date of the Monday, mirrors currentWeek.weekStart
+    day: v.union(
+      v.literal("Mon"),
+      v.literal("Tue"),
+      v.literal("Wed"),
+      v.literal("Thu"),
+      v.literal("Fri"),
+      v.literal("Sat"),
+    ),
+    meal: v.union(v.literal("breakfast"), v.literal("lunch")),
+    position: v.number(),
+    changeKind: v.union(v.literal("swap"), v.literal("custom")),
+    before: v.object({
+      dishId: v.union(v.number(), v.null()),
+      customLabel: v.union(v.string(), v.null()),
+    }),
+    after: v.object({
+      dishId: v.union(v.number(), v.null()),
+      customLabel: v.union(v.string(), v.null()),
+    }),
+    reason: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("in_review"),
+      v.literal("applied"),
+      v.literal("dismissed"),
+      v.literal("reviewed_no_change"),
+    ),
+    resolvedAt: v.union(v.number(), v.null()),
+    resolvedPr: v.union(v.string(), v.null()),
+  })
+    .index("by_status", ["status"])
+    .index("by_weekStart", ["weekStart"]),
+
   // Structured runtime error log written by the auto-recovery middleware.
   // Also fuel for the slow loop.
   incidents: defineTable({
