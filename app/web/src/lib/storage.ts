@@ -6,7 +6,10 @@ import type { CachedWeek } from "./types.js";
 
 const AUTH_KEY = "plantry:auth";
 const IDENTITY_KEY = "plantry:identity";
-const CACHED_WEEK_KEY = "plantry:lastWeek";
+// Bumped from `plantry:lastWeek` when the WeekSlot shape changed to a
+// position-ordered `dishes[]` list. Old caches are silently ignored on read
+// rather than crashing the render that expected the new shape.
+const CACHED_WEEK_KEY = "plantry:lastWeek:v2";
 const DEVICE_ID_KEY = "plantry:deviceId";
 
 // Auth timeout: a week. Chosen because both phones live with their owner and

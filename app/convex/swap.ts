@@ -2,12 +2,26 @@ import { query, mutation } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
 import { dishes, packSizes, ingredients } from "@plantry/engine/library";
 import { history } from "@plantry/engine/history";
-import { rankCandidatesForSlot } from "@plantry/engine";
-import type { Dish, Season } from "@plantry/engine";
+import { rankCandidates, emptyLedger, applyPick, type IngredientLedger } from "@plantry/engine";
+import type { Dish, Season, MenuHistoryRow } from "@plantry/engine";
 import { assertAuthor } from "./lib/author.js";
 
 type ShortDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type LowerMeal = "breakfast" | "lunch";
+
+type SlotAuthor = "rajat" | "tuhina" | "system";
+type DishPickShape = {
+  dishId: number | null;
+  customLabel: string | null;
+  source: "generated" | "swapped" | "custom";
+  author: SlotAuthor;
+  updatedAt: number;
+};
+type SlotShape = {
+  day: ShortDay;
+  meal: LowerMeal;
+  dishes: DishPickShape[];
+};
 
 /**
  * Bangalore seasons per `docs/product.md` §1. Duplicated inline from
@@ -22,64 +36,130 @@ function seasonOf(isoDate: string): Season {
   return "Winter";
 }
 
+const LONG_DAY: Record<ShortDay, MenuHistoryRow["day"]> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+};
+
 /**
- * Builds the `currentWeekPicks: Dish[]` context that `rankCandidatesForSlot`
- * needs to honour §3.1 (rice-at-most-once) and §6 (consolidation). We look up
- * each slot's `dishId` in the baked library; slots with `dishId === null` are
- * custom one-offs and skipped (they contribute no ingredient ledger entries).
- *
- * Optionally excludes one (day, meal) slot so the caller can omit the slot
- * being ranked itself; this matches the engine's expectation that the caller
- * does not double-count the slot's current pick (see `RankCandidatesForSlotArgs`
- * JSDoc).
+ * Collects the picks already on the live week, optionally excluding one
+ * (day, meal, position). Used to seed the §6 consolidation ledger and the
+ * within-week synthetic history that drives §4 step 1 longest-unused. The
+ * caller passes `exclude` so the slot/position being ranked does not
+ * double-count its own current pick.
  */
-function buildCurrentWeekPicks(
-  slots: ReadonlyArray<{
-    day: ShortDay;
-    meal: LowerMeal;
-    dishId: number | null;
-  }>,
-  exclude: { day: ShortDay; meal: LowerMeal } | null,
+function collectCurrentWeekPicks(
+  slots: ReadonlyArray<SlotShape>,
+  exclude: { day: ShortDay; meal: LowerMeal; position: number } | null,
 ): Dish[] {
-  const picks: Dish[] = [];
   const libraryById = new Map<number, Dish>(dishes.map((d) => [d.id, d]));
+  const picks: Dish[] = [];
   for (const slot of slots) {
-    if (exclude && slot.day === exclude.day && slot.meal === exclude.meal) {
-      continue;
+    for (let position = 0; position < slot.dishes.length; position += 1) {
+      if (
+        exclude &&
+        slot.day === exclude.day &&
+        slot.meal === exclude.meal &&
+        position === exclude.position
+      ) {
+        continue;
+      }
+      const dishId = slot.dishes[position].dishId;
+      if (dishId === null) continue;
+      const dish = libraryById.get(dishId);
+      if (dish) picks.push(dish);
     }
-    if (slot.dishId === null) continue;
-    const dish = libraryById.get(slot.dishId);
-    if (dish) picks.push(dish);
   }
   return picks;
 }
 
 /**
- * Returns the engine-ranked list of alternative dishes for a single
- * (day, meal) slot of the current week. Drives the swap UI's "Replace with..."
- * picker (Stream D slice 3 consumes this via `anyApi.swap.getSlotAlternatives`).
+ * Builds the non-restrictive candidate pool for the swap picker: every dish in
+ * the library that is Active, in season, and matches the meal-time. This is
+ * deliberately broader than the engine's composition-based pools (Menu 1 HP +
+ * partner + carb, etc.); per the feature spec the user is offered every
+ * meal-time dish and §3 eligibility violations are tolerated at swap time so
+ * the slow loop can learn from the resulting incidents.
+ */
+function broadPool(meal: LowerMeal, season: Season): Dish[] {
+  const engineMeal = meal === "breakfast" ? "Breakfast" : "Lunch";
+  return dishes.filter((d) => {
+    if (d.active !== "Yes") return false;
+    if (d.time !== engineMeal) return false;
+    if (d.seasons === "All") return true;
+    return d.seasons.includes(season);
+  });
+}
+
+/**
+ * Builds the within-week ledger and synthetic history that §4 priority needs.
+ * Picks already on the plate (other slots, other positions) seed the ledger
+ * (§6 consolidation) and the recency tilt (§4 step 1).
+ */
+function buildRankingContext(
+  weekStart: string,
+  day: ShortDay,
+  meal: LowerMeal,
+  currentWeekPicks: Dish[],
+): {
+  ledger: IngredientLedger;
+  syntheticHistory: MenuHistoryRow[];
+  sameDayBreakfastPrimary: string | undefined;
+} {
+  let ledger: IngredientLedger = emptyLedger(packSizes);
+  for (const dish of currentWeekPicks) {
+    ledger = applyPick(ledger, dish, ingredients);
+  }
+  const syntheticHistory: MenuHistoryRow[] = currentWeekPicks.map((d) => ({
+    weekStart,
+    day: LONG_DAY[day],
+    meal: meal === "breakfast" ? "Breakfast" : "Lunch",
+    dishName: d.name,
+    dishId: d.id,
+  }));
+  return {
+    ledger,
+    syntheticHistory,
+    sameDayBreakfastPrimary: undefined, // §4 step 2 same-day-breakfast tilt is
+    // engine-internal during generation; for swap-time ranking we leave it
+    // undefined so the picker is meal-symmetric across positions. The slow
+    // loop learns what users actually want via the resulting incidents.
+  };
+}
+
+/**
+ * Returns the engine-ranked list of alternative dishes for one position within
+ * one (day, meal) slot of the current week. Drives the swap UI's
+ * "Replace with..." picker.
  *
- * Signature (per `features/phase2.md` §3 Stream C slice 4):
+ * Signature (per `features/multi-dish-slots.md`):
  *   getSlotAlternatives({
- *     weekStart: string,                                       // ISO Monday
+ *     weekStart: string,
  *     day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat",
  *     meal: "breakfast" | "lunch",
- *     limit?: number,                                          // default 10
+ *     position: number,                            // 0-based within slot.dishes
+ *     limit?: number,                              // default 10
  *   }) => Dish[]
  *
- * Behavior:
- *   - Looks up the `currentWeek` row by `weekStart` via `by_weekStart`. If the
- *     row is missing, throws a `ConvexError` (the UI should not have asked).
- *   - Builds `currentWeekPicks` from the live week's slots, excluding the slot
- *     being ranked so the engine does not see the current pick in its own
- *     ranking context.
- *   - Calls `rankCandidatesForSlot` with the engine's capitalised meal
- *     ("Breakfast" / "Lunch") and the season derived from `weekStart`.
- *   - Filters out the currently-picked `dishId` from the result so the user is
- *     not offered a swap to the same dish.
- *   - Returns at most `limit` (default 10) full Zod-validated `Dish` objects,
- *     top of the ranking first. The frontend reads `.id`, `.name`, `.tags`,
- *     etc.
+ * Behavior (non-restrictive picker):
+ *   - Looks up the `currentWeek` row. Missing -> ConvexError.
+ *   - Builds the broad pool: every Active, in-season dish whose `time` matches
+ *     the meal (Breakfast for breakfast positions, Lunch for lunch positions).
+ *     NO per-position eligibility filter (no HP/partner/carb/Option A-B-C
+ *     narrowing). This is the deliberate fast-loop affordance: the user can
+ *     land on any dish; §3 violations are signal for the slow loop, not
+ *     errors the fast loop blocks. See `docs/product.md` §4 Principle 4.
+ *   - Builds the §6 consolidation ledger and §4 step 1 synthetic history from
+ *     the live week's other picks (the slot/position being ranked is
+ *     excluded so its current pick does not count against itself).
+ *   - Ranks via the engine's `rankCandidates` (§4 priority).
+ *   - Filters out the currently-picked dish at this position so the user is
+ *     not offered the same dish.
+ *   - Returns at most `limit` (default 10) Dish objects.
  */
 export const getSlotAlternatives = query({
   args: {
@@ -93,6 +173,7 @@ export const getSlotAlternatives = query({
       v.literal("Sat"),
     ),
     meal: v.union(v.literal("breakfast"), v.literal("lunch")),
+    position: v.number(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<Dish[]> => {
@@ -106,81 +187,79 @@ export const getSlotAlternatives = query({
 
     const limit = args.limit ?? 10;
     const season = seasonOf(args.weekStart);
-    const engineMeal = args.meal === "breakfast" ? "Breakfast" : "Lunch";
 
-    const currentSlot = week.slots.find(
-      (s) => s.day === args.day && s.meal === args.meal,
-    );
-    const currentDishId = currentSlot?.dishId ?? null;
+    const slots = week.slots as SlotShape[];
+    const currentSlot = slots.find((s) => s.day === args.day && s.meal === args.meal);
+    const currentDishId =
+      currentSlot && currentSlot.dishes[args.position]
+        ? currentSlot.dishes[args.position].dishId
+        : null;
 
-    const currentWeekPicks = buildCurrentWeekPicks(week.slots, {
+    const currentWeekPicks = collectCurrentWeekPicks(slots, {
       day: args.day,
       meal: args.meal,
+      position: args.position,
     });
 
-    const ranked = rankCandidatesForSlot({
-      weekStart: args.weekStart,
-      day: args.day,
-      meal: engineMeal,
-      library: dishes,
-      history,
-      season,
-      ingredients,
-      packSizes,
+    const { ledger, syntheticHistory, sameDayBreakfastPrimary } = buildRankingContext(
+      args.weekStart,
+      args.day,
+      args.meal,
       currentWeekPicks,
+    );
+
+    const pool = broadPool(args.meal, season);
+
+    const ranked = rankCandidates({
+      pool,
+      history: [...history, ...syntheticHistory],
+      sameDayBreakfastPrimaryIngredient: sameDayBreakfastPrimary,
+      consolidationContext: { ledger, ingredients },
     });
 
-    const filtered =
-      currentDishId === null
-        ? ranked
-        : ranked.filter((d) => d.id !== currentDishId);
+    const filtered = currentDishId === null ? ranked : ranked.filter((d) => d.id !== currentDishId);
     return filtered.slice(0, limit);
   },
 });
 
 /**
- * Replaces the dish in one (day, meal) slot of `currentWeek` with a different
- * dish that the engine considers eligible for that slot. Drives the swap UI's
- * confirmation step (Stream D slice 3 consumes this via
- * `anyApi.swap.swapDish`).
+ * Replaces one position within one (day, meal) slot of `currentWeek` with a
+ * different library dish. Drives the swap UI's confirmation step.
  *
- * Signature (per `features/phase2.md` §3 Stream C slice 4 and
- * `docs/engineering.md` §5 "Write (swap a dish)"):
+ * Signature (per `features/multi-dish-slots.md`):
  *   swapDish({
  *     author: "rajat" | "tuhina",
- *     weekStart: string,                                       // ISO Monday
+ *     weekStart: string,
  *     day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat",
  *     meal: "breakfast" | "lunch",
+ *     position: number,
  *     newDishId: number,
- *     version: number,                                         // OCC
+ *     version: number,
  *   }) => { ok: true; version: number }
  *      | { ok: false; reason: "version-mismatch" | "no-current-week"
- *                           | "no-such-slot" | "dish-not-eligible"
- *                           | "dish-not-in-library" }
+ *                           | "no-such-slot" | "no-such-position"
+ *                           | "dish-not-in-library"
+ *                           | "dish-not-meal-time"
+ *                           | "dish-not-active-or-in-season" }
  *
- * Behavior:
- *   - Validates `author` via `assertAuthor`; throws a `ConvexError` otherwise.
+ * Behavior (non-restrictive):
+ *   - Validates `author`; missing/empty author throws ConvexError.
  *   - Looks up `currentWeek` by `weekStart`. Missing -> `no-current-week`.
  *   - Optimistic concurrency: `row.version !== args.version` ->
- *     `version-mismatch`. The UI is expected to reload and retry.
+ *     `version-mismatch`.
  *   - Locates the slot by `(day, meal)`. Missing -> `no-such-slot`.
+ *     Locates the position within `slot.dishes`. Out of range ->
+ *     `no-such-position`.
  *   - Validates `newDishId` against the baked library. Missing ->
- *     `dish-not-in-library`.
- *   - Re-runs `rankCandidatesForSlot` with the same context
- *     `getSlotAlternatives` would have built and confirms `newDishId` is in
- *     the result. Missing -> `dish-not-eligible`. This catches a stale tap
- *     (the dish was eligible when the user opened the picker but isn't now
- *     because something else on the plate shifted the ledger).
- *   - Patches the slot to `{ ...existing, dishId: newDishId, customLabel: null,
- *     source: "swapped", author, updatedAt: Date.now() }` and increments
- *     `version` by 1.
- *   - Returns `{ ok: true, version: newVersion }`.
- *
- * Why the result is a tagged union, not a thrown error: every non-throw branch
- * is expected control flow that the UI handles (reload + retry, or show a
- * targeted message). Throws are reserved for programmer errors (bad author).
- * This matches the shape of `addCustomOneOff` (the contract every future
- * `currentWeek` mutation honours).
+ *     `dish-not-in-library`. Hard filters retained: meal-time and
+ *     Active+season. A lunch-time dish at a breakfast position rejects with
+ *     `dish-not-meal-time`. A non-Active or out-of-season dish rejects with
+ *     `dish-not-active-or-in-season`. Beyond these the swap is accepted: §3
+ *     composition eligibility (HP/Option A/B/C/carb-position) is NOT
+ *     enforced. See the deliberate design note on `getSlotAlternatives`.
+ *   - Patches `slot.dishes[position]` to `{ dishId: newDishId, customLabel:
+ *     null, source: "swapped", author, updatedAt: Date.now() }`. The rest of
+ *     the slot's dishes are untouched.
  */
 export const swapDish = mutation({
   args: {
@@ -195,6 +274,7 @@ export const swapDish = mutation({
       v.literal("Sat"),
     ),
     meal: v.union(v.literal("breakfast"), v.literal("lunch")),
+    position: v.number(),
     newDishId: v.number(),
     version: v.number(),
   },
@@ -209,8 +289,10 @@ export const swapDish = mutation({
           | "version-mismatch"
           | "no-current-week"
           | "no-such-slot"
-          | "dish-not-eligible"
-          | "dish-not-in-library";
+          | "no-such-position"
+          | "dish-not-in-library"
+          | "dish-not-meal-time"
+          | "dish-not-active-or-in-season";
       }
   > => {
     assertAuthor(args.author);
@@ -226,11 +308,14 @@ export const swapDish = mutation({
       return { ok: false, reason: "version-mismatch" };
     }
 
-    const slotIndex = week.slots.findIndex(
-      (s) => s.day === args.day && s.meal === args.meal,
-    );
+    const slots = week.slots as SlotShape[];
+    const slotIndex = slots.findIndex((s) => s.day === args.day && s.meal === args.meal);
     if (slotIndex === -1) {
       return { ok: false, reason: "no-such-slot" };
+    }
+    const slot = slots[slotIndex];
+    if (args.position < 0 || args.position >= slot.dishes.length) {
+      return { ok: false, reason: "no-such-position" };
     }
 
     const newDish = dishes.find((d) => d.id === args.newDishId);
@@ -238,38 +323,32 @@ export const swapDish = mutation({
       return { ok: false, reason: "dish-not-in-library" };
     }
 
-    const season = seasonOf(args.weekStart);
     const engineMeal = args.meal === "breakfast" ? "Breakfast" : "Lunch";
-    const currentWeekPicks = buildCurrentWeekPicks(week.slots, {
-      day: args.day,
-      meal: args.meal,
-    });
-    const ranked = rankCandidatesForSlot({
-      weekStart: args.weekStart,
-      day: args.day,
-      meal: engineMeal,
-      library: dishes,
-      history,
-      season,
-      ingredients,
-      packSizes,
-      currentWeekPicks,
-    });
-    if (!ranked.some((d) => d.id === args.newDishId)) {
-      return { ok: false, reason: "dish-not-eligible" };
+    if (newDish.time !== engineMeal) {
+      return { ok: false, reason: "dish-not-meal-time" };
+    }
+    if (newDish.active !== "Yes") {
+      return { ok: false, reason: "dish-not-active-or-in-season" };
+    }
+    const season = seasonOf(args.weekStart);
+    if (newDish.seasons !== "All" && !newDish.seasons.includes(season)) {
+      return { ok: false, reason: "dish-not-active-or-in-season" };
     }
 
-    const existing = week.slots[slotIndex];
+    const existingPick = slot.dishes[args.position];
     const now = Date.now();
-    const newSlot = {
-      ...existing,
+    const newPick: DishPickShape = {
+      ...existingPick,
       dishId: args.newDishId,
       customLabel: null,
-      source: "swapped" as const,
+      source: "swapped",
       author: args.author,
       updatedAt: now,
     };
-    const newSlots = [...week.slots];
+    const newDishes = [...slot.dishes];
+    newDishes[args.position] = newPick;
+    const newSlot: SlotShape = { ...slot, dishes: newDishes };
+    const newSlots = [...slots];
     newSlots[slotIndex] = newSlot;
     const newVersion = week.version + 1;
 

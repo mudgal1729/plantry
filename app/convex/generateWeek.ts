@@ -39,10 +39,10 @@ export function seasonOf(isoDate: string): Season {
  * Shape conversion (engine -> Convex):
  *   - day: identity (the engine's `Day` is already short-form: "Mon".."Sat").
  *   - meal: lowercased ("Breakfast" -> "breakfast", "Lunch" -> "lunch").
- *   - dishId: the lead pick (engine's `slot.dishes[0].id`); a slot with no
- *     picks (cap drop wiped it) is skipped.
- *   - customLabel: null (generated picks never carry a custom label).
- *   - source: "generated"; author: "system"; updatedAt: now.
+ *   - dishes: every pick from `slot.dishes`, in pick order (lead first), each
+ *     mapped to `{ dishId, customLabel: null, source: "generated",
+ *     author: "system", updatedAt: now }`. A slot with no picks (cap drop
+ *     wiped it) is skipped.
  *
  * Incidents: any human-readable warnings the engine reports (`GeneratedWeek
  * .incidents`, e.g. "Friday over cap (5), dropped: Rajma") are persisted as
@@ -86,11 +86,13 @@ export const generateCurrentWeek = internalMutation({
         .map((slot) => ({
           day: slot.day as ShortDay,
           meal: slot.meal.toLowerCase() as LowerMeal,
-          dishId: slot.dishes[0].id,
-          customLabel: null,
-          source: "generated" as const,
-          author: "system" as const,
-          updatedAt: now,
+          dishes: slot.dishes.map((dish) => ({
+            dishId: dish.id as number | null,
+            customLabel: null as string | null,
+            source: "generated" as const,
+            author: "system" as const,
+            updatedAt: now,
+          })),
         })),
     );
 

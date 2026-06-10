@@ -27,10 +27,13 @@ import { aggregateGroceryList, type Dish, type GroceryList } from "@plantry/engi
 
 type ShortDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type LowerMeal = "breakfast" | "lunch";
+type DishPickShape = {
+  dishId: number | null;
+};
 type SlotShape = {
   day: ShortDay;
   meal: LowerMeal;
-  dishId: number | null;
+  dishes: DishPickShape[];
 };
 
 /**
@@ -50,15 +53,17 @@ export const getGroceryList = query({
       throw new ConvexError("no current week for this weekStart");
     }
 
-    // Custom one-offs (`dishId === null`) are skipped: their ingredient
-    // quantities are not in the library, and v1 expects the user to add those
-    // ingredients themselves.
+    // Iterate every position in every (day, meal) slot. Custom one-offs
+    // (`dishId === null`) are skipped: their ingredient quantities are not in
+    // the library, and v1 expects the user to add those ingredients themselves.
     const libraryById = new Map<number, Dish>(dishes.map((d) => [d.id, d]));
     const weekPicks: Dish[] = [];
     for (const slot of week.slots as SlotShape[]) {
-      if (slot.dishId === null) continue;
-      const dish = libraryById.get(slot.dishId);
-      if (dish) weekPicks.push(dish);
+      for (const pick of slot.dishes) {
+        if (pick.dishId === null) continue;
+        const dish = libraryById.get(pick.dishId);
+        if (dish) weekPicks.push(dish);
+      }
     }
 
     return aggregateGroceryList({

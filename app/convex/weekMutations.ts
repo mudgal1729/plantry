@@ -2,20 +2,39 @@ import { mutation } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
 import { assertAuthor } from "./lib/author.js";
 
+type ShortDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
+type LowerMeal = "breakfast" | "lunch";
+
+type SlotAuthor = "rajat" | "tuhina" | "system";
+type DishPickShape = {
+  dishId: number | null;
+  customLabel: string | null;
+  source: "generated" | "swapped" | "custom";
+  author: SlotAuthor;
+  updatedAt: number;
+};
+type SlotShape = {
+  day: ShortDay;
+  meal: LowerMeal;
+  dishes: DishPickShape[];
+};
+
 /**
- * Replaces the dish in one (day, meal) slot of `currentWeek` with a custom
- * one-off label (a free-text dish that is not in the library).
+ * Replaces one position within one (day, meal) slot of `currentWeek` with a
+ * custom one-off label (a free-text dish that is not in the library).
  *
- * Signature (per `docs/engineering.md` §3, §7):
+ * Signature (per `docs/engineering.md` §3, §7, `features/multi-dish-slots.md`):
  *   addCustomOneOff({
  *     author: "rajat" | "tuhina",
  *     weekStart: string,                     // ISO date of the Monday
  *     day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat",
  *     meal: "breakfast" | "lunch",
+ *     position: number,                      // 0-based within slot.dishes
  *     customLabel: string,
  *     version: number,                       // optimistic concurrency from caller
  *   }) => { ok: true; version: number }
- *      | { ok: false; reason: "version-mismatch" | "no-current-week" | "no-such-slot" }
+ *      | { ok: false; reason: "version-mismatch" | "no-current-week"
+ *                           | "no-such-slot" | "no-such-position" }
  *
  * Behavior:
  *   - Validates `author` via `assertAuthor`; rejects with a `ConvexError` otherwise.
@@ -26,15 +45,12 @@ import { assertAuthor } from "./lib/author.js";
  *     Caller is expected to reload and retry.
  *   - Locates the slot by `(day, meal)`. Missing slot ->
  *     { ok: false, reason: "no-such-slot" }.
- *   - Patches that slot to `{ ...existing, dishId: null, customLabel,
+ *     Locates the position within `slot.dishes`. Out of range ->
+ *     { ok: false, reason: "no-such-position" }.
+ *   - Patches `slot.dishes[position]` to `{ dishId: null, customLabel,
  *     source: "custom", author, updatedAt: Date.now() }` and increments
- *     `version` by 1.
+ *     `version` by 1. The rest of the slot's dishes are untouched.
  *   - Returns `{ ok: true, version: newVersion }`.
- *
- * Why the result is a tagged union, not a thrown error: version-mismatch and
- * no-current-week are expected control flow that the UI handles (reload and
- * retry). Throwing would force the client to parse error strings, which is
- * fragile. Throws are reserved for programmer errors (bad author, empty label).
  */
 export const addCustomOneOff = mutation({
   args: {
@@ -49,6 +65,7 @@ export const addCustomOneOff = mutation({
       v.literal("Sat"),
     ),
     meal: v.union(v.literal("breakfast"), v.literal("lunch")),
+    position: v.number(),
     customLabel: v.string(),
     version: v.number(),
   },
@@ -59,7 +76,7 @@ export const addCustomOneOff = mutation({
     | { ok: true; version: number }
     | {
         ok: false;
-        reason: "version-mismatch" | "no-current-week" | "no-such-slot";
+        reason: "version-mismatch" | "no-current-week" | "no-such-slot" | "no-such-position";
       }
   > => {
     assertAuthor(args.author);
@@ -79,22 +96,30 @@ export const addCustomOneOff = mutation({
       return { ok: false, reason: "version-mismatch" };
     }
 
-    const slotIndex = week.slots.findIndex((s) => s.day === args.day && s.meal === args.meal);
+    const slots = week.slots as SlotShape[];
+    const slotIndex = slots.findIndex((s) => s.day === args.day && s.meal === args.meal);
     if (slotIndex === -1) {
       return { ok: false, reason: "no-such-slot" };
     }
+    const slot = slots[slotIndex];
+    if (args.position < 0 || args.position >= slot.dishes.length) {
+      return { ok: false, reason: "no-such-position" };
+    }
 
-    const existing = week.slots[slotIndex];
+    const existingPick = slot.dishes[args.position];
     const now = Date.now();
-    const newSlot = {
-      ...existing,
+    const newPick: DishPickShape = {
+      ...existingPick,
       dishId: null,
       customLabel: trimmedLabel,
-      source: "custom" as const,
+      source: "custom",
       author: args.author,
       updatedAt: now,
     };
-    const newSlots = [...week.slots];
+    const newDishes = [...slot.dishes];
+    newDishes[args.position] = newPick;
+    const newSlot: SlotShape = { ...slot, dishes: newDishes };
+    const newSlots = [...slots];
     newSlots[slotIndex] = newSlot;
     const newVersion = week.version + 1;
 

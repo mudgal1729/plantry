@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { dishes } from "@plantry/engine/library";
-import type { CurrentWeek, Identity, WeekSlot } from "../lib/types.js";
+import type { CurrentWeek, DishPick, Identity, WeekSlot } from "../lib/types.js";
 import { dayLabel, dayOrderIndex, mealLabel, mealOrderIndex } from "../lib/days.js";
 import { getCachedWeek, setCachedWeek } from "../lib/storage.js";
 import { SlotEditor } from "./SlotEditor.js";
@@ -26,15 +26,15 @@ interface QueuedCommentRow {
   };
 }
 
-function slotPrimaryLabel(slot: WeekSlot): string {
-  if (slot.customLabel) return slot.customLabel;
-  if (slot.dishId !== null) {
-    return DISH_NAME_BY_ID.get(slot.dishId) ?? `Dish #${slot.dishId}`;
+function pickPrimaryLabel(pick: DishPick): string {
+  if (pick.customLabel) return pick.customLabel;
+  if (pick.dishId !== null) {
+    return DISH_NAME_BY_ID.get(pick.dishId) ?? `Dish #${pick.dishId}`;
   }
   return "Unknown dish";
 }
 
-function slotSourceLabel(source: WeekSlot["source"]): string {
+function pickSourceLabel(source: DishPick["source"]): string {
   if (source === "generated") return "generated";
   if (source === "swapped") return "swapped";
   return "custom";
@@ -58,8 +58,8 @@ function groupByDay(week: CurrentWeek): Array<{
   return grouped;
 }
 
-function slotKey(day: string, meal: string): string {
-  return `${day}-${meal}`;
+function positionKey(day: string, meal: string, position: number): string {
+  return `${day}-${meal}-${position}`;
 }
 
 export function CurrentWeekView({ identity }: CurrentWeekViewProps) {
@@ -121,16 +121,14 @@ function WeekBody({
 }) {
   const grouped = groupByDay(week);
 
-  // Local UI state: which slot's editor is open, and which target's comment
-  // composer is open. At most one of each at a time keeps the layout sane on
-  // mobile.
-  const [editingSlot, setEditingSlot] = useState<string | null>(null);
+  // Local UI state: which (day, meal, position) editor is open, and which
+  // target's comment composer is open. At most one of each at a time keeps the
+  // layout sane on mobile.
+  const [editingPosition, setEditingPosition] = useState<string | null>(null);
   const [composingFor, setComposingFor] = useState<string | null>(null);
 
   // Optimistic comments: appended on send, removed when the server row with
-  // matching fields appears in the queued list. The race we are handling:
-  // the user posts a comment, then immediately posts another or navigates
-  // away before the websocket round-trip lands.
+  // matching fields appears in the queued list.
   const [pendingComments, setPendingComments] = useState<PendingLocalComment[]>([]);
 
   // Comments query for badge counts. Filtered to this week. Both this view
@@ -140,7 +138,7 @@ function WeekBody({
     | undefined;
 
   const commentCounts = useMemo(() => {
-    const slotCounts = new Map<string, number>();
+    const dishCounts = new Map<string, number>();
     const dayCounts = new Map<string, number>();
     const rows = allComments ?? [];
     for (const c of rows) {
@@ -148,14 +146,14 @@ function WeekBody({
       if (c.attachedTo.kind === "day" && c.attachedTo.day) {
         dayCounts.set(c.attachedTo.day, (dayCounts.get(c.attachedTo.day) ?? 0) + 1);
       } else if (c.attachedTo.kind === "dish" && c.attachedTo.day !== null) {
-        // The slot's identity is (day, dishId); a comment on a custom one-off
-        // (dishId null) attaches to the day's custom slot. We bucket by
-        // (day, dishId-or-"custom").
+        // Comments bucket by (day, dishId). A comment on a custom one-off
+        // attaches to (day, "custom"); multiple custom one-offs in a day all
+        // share that bucket — acceptable for v1.
         const key = `${c.attachedTo.day}-${c.attachedTo.dishId ?? "custom"}`;
-        slotCounts.set(key, (slotCounts.get(key) ?? 0) + 1);
+        dishCounts.set(key, (dishCounts.get(key) ?? 0) + 1);
       }
     }
-    return { slotCounts, dayCounts };
+    return { dishCounts, dayCounts };
   }, [allComments, week.weekStart]);
 
   function handleAddPending(target: CommentTarget, text: string) {
@@ -241,79 +239,88 @@ function WeekBody({
                 />
               )}
               <ul className="day-card__slots">
-                {bucket.slots.map((slot) => {
-                  const sKey = slotKey(slot.day, slot.meal);
-                  const isEditing = editingSlot === sKey;
-                  const commentTargetKey = `slot-${slot.day}-${slot.meal}`;
-                  const isComposingComment = composingFor === commentTargetKey;
-                  const sBucketKey = `${slot.day}-${slot.dishId ?? "custom"}`;
-                  const slotCount = commentCounts.slotCounts.get(sBucketKey) ?? 0;
-                  return (
-                    <li key={sKey} className="slot">
-                      <div className="slot__row">
-                        <span className="slot__meal">{mealLabel(slot.meal)}</span>
-                        <span className="slot__dish">{slotPrimaryLabel(slot)}</span>
-                        <span className="slot__source">{slotSourceLabel(slot.source)}</span>
+                {bucket.slots.flatMap((slot) =>
+                  slot.dishes.map((pick, position) => {
+                    const posKey = positionKey(slot.day, slot.meal, position);
+                    const isEditing = editingPosition === posKey;
+                    const isFirstOfMeal = position === 0;
+                    const commentTargetKey = `slot-${slot.day}-${slot.meal}-${position}`;
+                    const isComposingComment = composingFor === commentTargetKey;
+                    const dishBucketKey = `${slot.day}-${pick.dishId ?? "custom"}`;
+                    const slotCount = commentCounts.dishCounts.get(dishBucketKey) ?? 0;
+                    return (
+                      <li
+                        key={posKey}
+                        className={`slot ${isFirstOfMeal ? "slot--first-of-meal" : "slot--continuation"}`}
+                      >
+                        <div className="slot__row">
+                          <span className="slot__meal">
+                            {isFirstOfMeal ? mealLabel(slot.meal) : ""}
+                          </span>
+                          <span className="slot__dish">{pickPrimaryLabel(pick)}</span>
+                          <span className="slot__source">{pickSourceLabel(pick.source)}</span>
+                          {interactive && (
+                            <button
+                              type="button"
+                              className="slot__edit"
+                              onClick={() => setEditingPosition(isEditing ? null : posKey)}
+                              aria-label={`Edit ${mealLabel(slot.meal)} dish ${position + 1} for ${dayLabel(slot.day)}`}
+                            >
+                              {isEditing ? "Close" : "Edit"}
+                            </button>
+                          )}
+                        </div>
+                        {interactive && isEditing && (
+                          <SlotEditor
+                            weekStart={week.weekStart}
+                            day={slot.day}
+                            meal={slot.meal}
+                            position={position}
+                            currentLabel={pickPrimaryLabel(pick)}
+                            version={week.version}
+                            identity={identity}
+                            onClose={() => setEditingPosition(null)}
+                          />
+                        )}
                         {interactive && (
                           <button
                             type="button"
-                            className="slot__edit"
-                            onClick={() => setEditingSlot(isEditing ? null : sKey)}
-                            aria-label={`Edit ${mealLabel(slot.meal)} for ${dayLabel(slot.day)}`}
+                            className="slot__comment-link"
+                            onClick={() =>
+                              setComposingFor(isComposingComment ? null : commentTargetKey)
+                            }
                           >
-                            {isEditing ? "Close" : "Edit"}
+                            {isComposingComment ? "Cancel" : "Add comment"}
+                            {slotCount > 0 && <span className="badge">{slotCount}</span>}
                           </button>
                         )}
-                      </div>
-                      {interactive && isEditing && (
-                        <SlotEditor
-                          weekStart={week.weekStart}
-                          day={slot.day}
-                          meal={slot.meal}
-                          currentLabel={slotPrimaryLabel(slot)}
-                          version={week.version}
-                          identity={identity}
-                          onClose={() => setEditingSlot(null)}
-                        />
-                      )}
-                      {interactive && (
-                        <button
-                          type="button"
-                          className="slot__comment-link"
-                          onClick={() =>
-                            setComposingFor(isComposingComment ? null : commentTargetKey)
-                          }
-                        >
-                          {isComposingComment ? "Cancel" : "Add comment"}
-                          {slotCount > 0 && <span className="badge">{slotCount}</span>}
-                        </button>
-                      )}
-                      {interactive && isComposingComment && (
-                        <CommentComposer
-                          target={{
-                            kind: "dish",
-                            weekStart: week.weekStart,
-                            day: slot.day,
-                            dishId: slot.dishId,
-                          }}
-                          identity={identity}
-                          onClose={() => setComposingFor(null)}
-                          onOptimisticSend={(text) =>
-                            handleAddPending(
-                              {
-                                kind: "dish",
-                                weekStart: week.weekStart,
-                                day: slot.day,
-                                dishId: slot.dishId,
-                              },
-                              text,
-                            )
-                          }
-                        />
-                      )}
-                    </li>
-                  );
-                })}
+                        {interactive && isComposingComment && (
+                          <CommentComposer
+                            target={{
+                              kind: "dish",
+                              weekStart: week.weekStart,
+                              day: slot.day,
+                              dishId: pick.dishId,
+                            }}
+                            identity={identity}
+                            onClose={() => setComposingFor(null)}
+                            onOptimisticSend={(text) =>
+                              handleAddPending(
+                                {
+                                  kind: "dish",
+                                  weekStart: week.weekStart,
+                                  day: slot.day,
+                                  dishId: pick.dishId,
+                                },
+                                text,
+                              )
+                            }
+                          />
+                        )}
+                      </li>
+                    );
+                  }),
+                )}
               </ul>
             </li>
           );

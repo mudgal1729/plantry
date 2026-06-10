@@ -7,6 +7,7 @@ interface SlotEditorProps {
   weekStart: string;
   day: ShortDay;
   meal: Meal;
+  position: number;
   currentLabel: string;
   version: number;
   identity: Identity;
@@ -18,7 +19,8 @@ type Mode = "swap" | "custom";
 type ErrorState =
   | null
   | { kind: "version-mismatch" }
-  | { kind: "dish-not-eligible" }
+  | { kind: "dish-not-meal-time" }
+  | { kind: "dish-not-active-or-in-season" }
   | { kind: "fatal"; message: string };
 
 interface AlternativeDish {
@@ -31,6 +33,7 @@ export function SlotEditor({
   weekStart,
   day,
   meal,
+  position,
   currentLabel,
   version,
   identity,
@@ -55,9 +58,7 @@ export function SlotEditor({
           type="button"
           role="tab"
           aria-selected={mode === "swap"}
-          className={`slot-editor__tab ${
-            mode === "swap" ? "slot-editor__tab--active" : ""
-          }`}
+          className={`slot-editor__tab ${mode === "swap" ? "slot-editor__tab--active" : ""}`}
           onClick={() => handleModeChange("swap")}
           disabled={inFlight}
         >
@@ -67,9 +68,7 @@ export function SlotEditor({
           type="button"
           role="tab"
           aria-selected={mode === "custom"}
-          className={`slot-editor__tab ${
-            mode === "custom" ? "slot-editor__tab--active" : ""
-          }`}
+          className={`slot-editor__tab ${mode === "custom" ? "slot-editor__tab--active" : ""}`}
           onClick={() => handleModeChange("custom")}
           disabled={inFlight}
         >
@@ -82,6 +81,7 @@ export function SlotEditor({
           weekStart={weekStart}
           day={day}
           meal={meal}
+          position={position}
           version={version}
           identity={identity}
           error={error}
@@ -98,6 +98,7 @@ export function SlotEditor({
           weekStart={weekStart}
           day={day}
           meal={meal}
+          position={position}
           currentLabel={currentLabel}
           version={version}
           identity={identity}
@@ -112,12 +113,7 @@ export function SlotEditor({
       <ErrorDisplay error={error} onReload={onClose} />
 
       <div className="slot-editor__chrome">
-        <button
-          type="button"
-          className="slot-editor__cancel"
-          onClick={onClose}
-          disabled={inFlight}
-        >
+        <button type="button" className="slot-editor__cancel" onClick={onClose} disabled={inFlight}>
           Cancel
         </button>
       </div>
@@ -129,6 +125,7 @@ interface SharedPaneProps {
   weekStart: string;
   day: ShortDay;
   meal: Meal;
+  position: number;
   version: number;
   identity: Identity;
   error: ErrorState;
@@ -142,6 +139,7 @@ function SwapPane({
   weekStart,
   day,
   meal,
+  position,
   version,
   identity,
   setError,
@@ -154,6 +152,7 @@ function SwapPane({
     weekStart,
     day,
     meal,
+    position,
   }) as AlternativeDish[] | undefined;
 
   const swapDish = useMutation(anyApi.swap.swapDish);
@@ -179,6 +178,7 @@ function SwapPane({
         weekStart,
         day,
         meal,
+        position,
         newDishId: selectedId,
         version,
       })) as
@@ -189,8 +189,10 @@ function SwapPane({
               | "version-mismatch"
               | "no-current-week"
               | "no-such-slot"
-              | "dish-not-eligible"
-              | "dish-not-in-library";
+              | "no-such-position"
+              | "dish-not-in-library"
+              | "dish-not-meal-time"
+              | "dish-not-active-or-in-season";
           };
 
       if (result.ok) {
@@ -204,11 +206,12 @@ function SwapPane({
         setError({ kind: "version-mismatch" });
         return;
       }
-      if (result.reason === "dish-not-eligible") {
-        // Race: the alternatives list was right at fetch time but the chosen
-        // dish drifted out of eligibility (e.g. a parallel swap consumed its
-        // primary ingredient slot under §3 no-repeat).
-        setError({ kind: "dish-not-eligible" });
+      if (result.reason === "dish-not-meal-time") {
+        setError({ kind: "dish-not-meal-time" });
+        return;
+      }
+      if (result.reason === "dish-not-active-or-in-season") {
+        setError({ kind: "dish-not-active-or-in-season" });
         return;
       }
       setError({ kind: "fatal", message: "Something is off, please reload." });
@@ -232,7 +235,7 @@ function SwapPane({
     return (
       <div className="slot-editor__pane">
         <p className="slot-editor__hint">
-          No alternatives match this slot under the current rules. Try a Custom one-off.
+          No alternatives in the library for this meal. Try a Custom one-off.
         </p>
         <div className="slot-editor__actions">
           <button
@@ -252,9 +255,7 @@ function SwapPane({
 
   return (
     <div className="slot-editor__pane">
-      <p className="slot-editor__label slot-editor__label--block">
-        Pick a replacement
-      </p>
+      <p className="slot-editor__label slot-editor__label--block">Pick a replacement</p>
       <ul className="alt-list">
         {alternatives.map((d) => {
           const isSelected = selectedId === d.id;
@@ -293,6 +294,7 @@ function CustomPane({
   weekStart,
   day,
   meal,
+  position,
   currentLabel,
   version,
   identity,
@@ -317,11 +319,15 @@ function CustomPane({
         weekStart,
         day,
         meal,
+        position,
         customLabel: trimmed,
         version,
       })) as
         | { ok: true; version: number }
-        | { ok: false; reason: "version-mismatch" | "no-current-week" | "no-such-slot" };
+        | {
+            ok: false;
+            reason: "version-mismatch" | "no-current-week" | "no-such-slot" | "no-such-position";
+          };
       if (result.ok) {
         onClose();
         return;
@@ -343,12 +349,12 @@ function CustomPane({
     <div className="slot-editor__pane">
       <label
         className="slot-editor__label slot-editor__label--block"
-        htmlFor={`slot-editor-${day}-${meal}`}
+        htmlFor={`slot-editor-${day}-${meal}-${position}`}
       >
         Replace with
       </label>
       <input
-        id={`slot-editor-${day}-${meal}`}
+        id={`slot-editor-${day}-${meal}-${position}`}
         type="text"
         className="slot-editor__input"
         value={value}
@@ -370,13 +376,7 @@ function CustomPane({
   );
 }
 
-function ErrorDisplay({
-  error,
-  onReload,
-}: {
-  error: ErrorState;
-  onReload: () => void;
-}) {
+function ErrorDisplay({ error, onReload }: { error: ErrorState; onReload: () => void }) {
   if (!error) return null;
   if (error.kind === "version-mismatch") {
     return (
@@ -388,10 +388,20 @@ function ErrorDisplay({
       </div>
     );
   }
-  if (error.kind === "dish-not-eligible") {
+  if (error.kind === "dish-not-meal-time") {
     return (
       <div className="slot-editor__error" role="alert">
-        <p>That dish is no longer available for this slot. Reload to see the latest options.</p>
+        <p>That dish belongs to a different meal-time. Reload and try again.</p>
+        <button type="button" className="slot-editor__reload" onClick={onReload}>
+          Reload
+        </button>
+      </div>
+    );
+  }
+  if (error.kind === "dish-not-active-or-in-season") {
+    return (
+      <div className="slot-editor__error" role="alert">
+        <p>That dish is no longer active or in season. Reload to see the latest options.</p>
         <button type="button" className="slot-editor__reload" onClick={onReload}>
           Reload
         </button>

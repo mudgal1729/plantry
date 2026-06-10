@@ -9,6 +9,12 @@ import { v } from "convex/values";
 export default defineSchema({
   // The live Mon-Sat plan for the current week. Mutated by swaps, custom one-offs,
   // and finalize. Version increments on every mutation for optimistic concurrency.
+  //
+  // Schema shape (a): one row per (day, meal). Each row carries `dishes[]`, a
+  // position-ordered list of dish picks. Position 0 is the lead (HP for Menu 1,
+  // complete_meal for Menu 3, etc.) — the rest are partners/companions/carbs.
+  // Per-dish source/author/updatedAt let the slow loop attribute who changed
+  // which dish in a multi-dish meal. See `features/multi-dish-slots.md`.
   currentWeek: defineTable({
     weekStart: v.string(), // ISO date of the Monday, e.g. "2026-06-15"
     status: v.union(v.literal("draft"), v.literal("final")),
@@ -23,19 +29,15 @@ export default defineSchema({
           v.literal("Sat"),
         ),
         meal: v.union(v.literal("breakfast"), v.literal("lunch")),
-        dishId: v.union(v.number(), v.null()), // null when custom one-off
-        customLabel: v.union(v.string(), v.null()),
-        source: v.union(
-          v.literal("generated"),
-          v.literal("swapped"),
-          v.literal("custom"),
+        dishes: v.array(
+          v.object({
+            dishId: v.union(v.number(), v.null()), // null when custom one-off
+            customLabel: v.union(v.string(), v.null()),
+            source: v.union(v.literal("generated"), v.literal("swapped"), v.literal("custom")),
+            author: v.union(v.literal("rajat"), v.literal("tuhina"), v.literal("system")),
+            updatedAt: v.number(),
+          }),
         ),
-        author: v.union(
-          v.literal("rajat"),
-          v.literal("tuhina"),
-          v.literal("system"),
-        ),
-        updatedAt: v.number(),
       }),
     ),
     version: v.number(),
@@ -92,11 +94,7 @@ export default defineSchema({
   // Also fuel for the slow loop.
   incidents: defineTable({
     createdAt: v.number(),
-    source: v.union(
-      v.literal("engine"),
-      v.literal("backend"),
-      v.literal("frontend"),
-    ),
+    source: v.union(v.literal("engine"), v.literal("backend"), v.literal("frontend")),
     severity: v.union(v.literal("warn"), v.literal("error")),
     context: v.any(),
     message: v.string(),
