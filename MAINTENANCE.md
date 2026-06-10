@@ -8,15 +8,16 @@ Both jobs run from Claude Code sessions invoked by Rajat. Neither is on a cron. 
 
 ### 1.1 Why
 
-User feedback accumulates as comments in Convex during the week (and as runtime incidents from the auto-recovery middleware). These cannot be applied directly: each one needs right-size diagnosis before becoming a structural change. The slow loop is the only path by which `data/dishes.md`, `data/ingredients.md`, `docs/engine.md`, `engine/`, or `data/changelog.md` change.
+User feedback accumulates in Convex during the week as three signal channels: queued `comments` rows (explicit feedback the user typed), queued `manualChanges` rows (observed behavior, one row per swap or custom one-off with the user's stated reason), and runtime `incidents` from the auto-recovery middleware. None of these can be applied directly: each cluster needs right-size diagnosis before becoming a structural change. The slow loop is the only path by which `data/dishes.md`, `data/ingredients.md`, `docs/engine.md`, `engine/`, or `data/changelog.md` change.
 
 ### 1.2 Trigger
 
-Rajat opens a Claude Code session in the main repo directory and types `/slow-loop`. Convention is Sunday morning around 11am IST, but the cadence is not enforced. The session can also be passed a specific date range (`/slow-loop since:2026-05-01`), a focus theme (`/slow-loop focus:spice`), or a fixture path (`/slow-loop --fixture data/test-fixtures/slow-loop`). The fixture path is for EM dry-runs against the synthetic comments and incidents at `data/test-fixtures/slow-loop/queued-comments.example.json` and `incidents.example.json`; when passed, the session reads from those files instead of Convex.
+Rajat opens a Claude Code session in the main repo directory and types `/slow-loop`. Convention is Sunday morning around 11am IST, but the cadence is not enforced. The session can also be passed a specific date range (`/slow-loop since:2026-05-01`), a focus theme (`/slow-loop focus:spice`), or a fixture path (`/slow-loop --fixture data/test-fixtures/slow-loop`). The fixture path is for EM dry-runs against the synthetic comments, manual changes, and incidents at `data/test-fixtures/slow-loop/queued-comments.example.json`, `manual-changes.example.json`, and `incidents.example.json`; when passed, the session reads from those files instead of Convex.
 
 ### 1.3 Inputs the session reads
 
 - All `queued` rows in Convex `comments` (via `npx convex run queries/comments:listQueuedComments`).
+- All `queued` rows in Convex `manualChanges` (via `npx convex run queries/manualChanges:listQueuedManualChanges`).
 - All open `incidents` from Convex (via `npx convex run queries/incidents:listIncidents`).
 - Current `data/dishes.md`, `data/ingredients.md`, `data/menu_history.md`, `data/changelog.md`.
 - Current `docs/engine.md` plus `engine/src/` for the engine state.
@@ -24,7 +25,7 @@ Rajat opens a Claude Code session in the main repo directory and types `/slow-lo
 
 ### 1.4 What the session does
 
-1. Cluster comments + incidents by theme (e.g. "spice tolerance varies day to day", "we never cook lauki anymore", "fish pack size feels off", "Tuhina ordered in Thursdays in May").
+1. Cluster comments + manual changes + incidents by theme (e.g. "spice tolerance varies day to day", "we never cook lauki anymore", "fish pack size feels off", "Tuhina ordered in Thursdays in May", "rajma keeps getting swapped to chole with reason 'bored of rajma'"). A cluster can mix rows from any of the three tables when they touch the same underlying property. Manual changes are observed behavior, not rule violations; the slow loop reads them as signal for what the engine got wrong, then asks whether the rule should change.
 2. For each cluster, apply right-size discipline (`docs/product.md` §4 Principle 1):
    - Size: one-off, small pattern, structural.
    - Smallest level that fixes it: data row, new tag, rule wording, engine code, UI affordance, infrastructure.
@@ -48,8 +49,8 @@ A single PR titled `slow-loop/<date>: <one-line summary of themes>`. PR descript
 
 A GitHub Action posts back to Convex:
 
-- Marks the consumed `comments` as `applied` with the merged PR URL.
-- Marks comments in a "no change warranted" cluster as `reviewed_no_change` with the documented reason.
+- Marks the consumed `comments` rows as `applied` with the merged PR URL, or `reviewed_no_change` for clusters with "no change warranted" as the chosen level.
+- Marks the consumed `manualChanges` rows with the same outcome per cluster, using the same per-cluster fence section.
 - Marks the corresponding `incidents` as resolved.
 
 The action then triggers a redeploy: build emits new typed library/history modules from the updated markdown, Convex picks up the new functions, Vercel rebuilds the frontend. The next generated week uses the new rules.
@@ -149,22 +150,24 @@ Mismatches flag in the PR description. The job does not move or rename files aut
 
 ## 3. Slow-loop mark-applied action
 
-A GitHub Action at `.github/workflows/slow-loop-applied.yml` closes the slow-loop feedback cycle: when a `slow-loop/*` PR merges into `main`, the action calls internal Convex mutations to mark the consumed `comments` rows `applied` or `reviewed_no_change` and the consumed `incidents` rows resolved. Without it, the next `/slow-loop` run would reread the same queued comments and reprocess them.
+A GitHub Action at `.github/workflows/slow-loop-applied.yml` closes the slow-loop feedback cycle: when a `slow-loop/*` PR merges into `main`, the action calls internal Convex mutations to mark the consumed `comments` and `manualChanges` rows `applied` or `reviewed_no_change` and the consumed `incidents` rows resolved. Without it, the next `/slow-loop` run would reread the same queued signal and reprocess it.
 
 ### 3.1 PR body contract
 
 `/slow-loop` produces a PR body with two sources of truth for the action:
 
-1. A `## Consumed comments by cluster` section with one fenced ` ```cluster ` block per cluster. Each block has three keys: `outcome:` (either `applied` or `reviewed_no_change`, derived from that cluster's diagnosis card "Chosen level"), `comment_ids:` (comma-separated comment ids consumed by this cluster, or `-` if none), and `incident_ids:` (comma-separated, or `-`). The action parses this section to map each id to the correct outcome.
-2. A flat `Consumed comment IDs:` and `Consumed incident IDs:` line for human readability and as a fallback. If the per-cluster section is absent, the action treats every listed comment id as `applied` (conservative default for a PR that touched files).
+1. A `## Consumed comments by cluster` section with one fenced ` ```cluster ` block per cluster. Each block has four keys: `outcome:` (either `applied` or `reviewed_no_change`, derived from that cluster's diagnosis card "Chosen level"), `comment_ids:` (comma-separated comment ids consumed by this cluster, or `-` if none), `manual_change_ids:` (comma-separated `manualChanges` row ids, or `-`), and `incident_ids:` (comma-separated, or `-`). The action parses this section to map each id to the correct outcome.
+2. Flat `Consumed comment IDs:`, `Consumed manual-change IDs:`, and `Consumed incident IDs:` lines for human readability and as a fallback. If the per-cluster section is absent, the action treats every listed id as `applied` (conservative default for a PR that touched files).
 
 ### 3.2 Convex mutations called
 
-All three live in `app/convex/comments.ts` and are `internalMutation` (not exposed to the browser):
+Five `internalMutation` functions (not exposed to the browser), split across `app/convex/comments.ts` and `app/convex/manualChangesMutations.ts`:
 
 - `comments:markCommentsApplied({ commentIds, resolvedPr })` sets each row `status: "applied"`, `resolvedAt: now`, `resolvedPr: <PR URL>`.
 - `comments:markCommentsReviewedNoChange({ commentIds, resolvedPr })` same shape, status `reviewed_no_change`.
 - `comments:markIncidentsResolved({ incidentIds, resolvedPr })` sets `resolvedAt: now` on each incident row.
+- `manualChangesMutations:markManualChangesApplied({ ids, resolvedPr })` sets each `manualChanges` row `status: "applied"`, `resolvedAt: now`, `resolvedPr: <PR URL>`.
+- `manualChangesMutations:markManualChangesReviewedNoChange({ ids, resolvedPr })` same shape, status `reviewed_no_change`.
 
 Each mutation handles missing or already-resolved ids by inserting a `warn`-severity `incidents` row noting which id was skipped, then continuing. The mutations never throw; the post-merge step is best-effort and must not block a merge.
 

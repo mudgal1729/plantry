@@ -33,9 +33,9 @@ Plantry has two stores by design. The split is the load-bearing engineering deci
 
 Principle for the split: anything a human edits by hand stays in git, because git's pull-request/diff/review workflow is what we want. Anything the running app writes stays in Convex, because committing on every swap would be slow, noisy, and turn git history into a transactional log. The audit-trail argument for git is preserved where it matters (library and rules); operational state has author + timestamp inside Convex.
 
-## 3. Convex schema (shape, not final)
+## 3. Convex schema
 
-The schema below sketches what the tables hold. The authoritative schema lives in `app/convex/schema.ts` once Stream C lands.
+`app/convex/schema.ts` is the authoritative schema. The sketch below mirrors it.
 
 ```
 currentWeek
@@ -44,14 +44,20 @@ currentWeek
   slots: array of {
     day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"
     meal: "breakfast" | "lunch"
-    dishId: number | null              # null if custom
-    customLabel: string | null         # populated if dishId is null
-    source: "generated" | "swapped" | "custom"
-    author: "rajat" | "tuhina" | "system"
-    updatedAt: number
+    dishes: array of {                 # one entry per dish in the meal
+      dishId: number | null            # null if custom one-off
+      customLabel: string | null       # populated if dishId is null
+      source: "generated" | "swapped" | "custom"
+      author: "rajat" | "tuhina" | "system"
+      updatedAt: number
+    }
   }
   version: number                      # for optimistic concurrency
+```
 
+Each (day, meal) slot holds the engine's full pick list for that meal. Mon/Wed/Fri breakfast carries 2 dishes; Tue/Thu breakfast carries 1; Mon/Wed/Fri lunch carries 3; Tue/Thu lunch carries 4; Saturday lunch carries 3. Per-dish author and updatedAt let the slow loop attribute who changed which dish in a multi-dish meal.
+
+```
 weekArchive
   weekStart: string
   finalizedAt: number
@@ -72,6 +78,21 @@ comments
   resolvedAt: number | null
   resolvedPr: string | null            # PR URL when applied
 
+manualChanges                          # append-only log of user edits
+  createdAt: number
+  author: "rajat" | "tuhina"
+  weekStart: string                    # ISO Monday, mirrors currentWeek
+  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"
+  meal: "breakfast" | "lunch"
+  position: number                     # index into currentWeek.slots[].dishes
+  changeKind: "swap" | "custom"
+  before: { dishId: number | null, customLabel: string | null }
+  after:  { dishId: number | null, customLabel: string | null }
+  reason: string                       # user-provided, non-empty after trim
+  status: "queued" | "in_review" | "applied" | "dismissed" | "reviewed_no_change"
+  resolvedAt: number | null
+  resolvedPr: string | null
+
 incidents
   createdAt: number
   source: "engine" | "backend" | "frontend"
@@ -85,6 +106,8 @@ userProfiles
   identity: "rajat" | "tuhina"
   installedAt: number
 ```
+
+`comments`, `manualChanges`, and `incidents` are the three signal channels the slow loop consumes. Comments are explicit user feedback. Manual changes are observed behavior, one row per swap or custom one-off with the user's stated reason. Incidents are runtime violations from the engine or backend. Each row's `status` lifecycle is identical so the slow-loop mark-applied action can mark every consumed row uniformly (see `MAINTENANCE.md` §3).
 
 The library + rules are not in Convex. Convex functions load them by importing typed JSON or TS modules emitted at build time from the markdown files (see §4).
 
@@ -102,16 +125,25 @@ Round-trip discipline: the build's parser is the same parser used by the round-t
 3. Library and rules are already bundled into the JS, so the engine can simulate immediately.
 4. `currentWeek` and `comments` come from Convex subscriptions and stream live updates as either user edits.
 
+**Read (swap picker alternatives):**
+1. Frontend calls `getSlotAlternatives({ weekStart, day, meal, position, limit? })`.
+2. The query builds a non-restrictive candidate pool: every dish in the library that is Active, in-season for the current Bangalore season, and matches the meal-time (Breakfast-time dishes for breakfast positions, Lunch-time dishes for lunch positions). No per-position eligibility filter; §3 composition (HP/partner/Option A-B-C/carb-position) is not enforced.
+3. The engine ranks the pool by `docs/engine.md` §4 priority (longest-unused first, with the ingredient ledger and same-day-breakfast tilts seeded from the live week's other picks, excluding the slot/position being ranked).
+4. The currently-picked dish at this position is filtered out; the frontend renders the ranked list and the user picks any dish.
+
 **Write (swap a dish):**
 1. Frontend optimistically updates the UI.
-2. Convex mutation `swapDish(weekStart, day, meal, newDishId, author)` validates: dish is eligible, in season, not in the no-repeat window, correct category for the slot.
-3. On success the slot updates in `currentWeek`, version increments, all subscribers receive the new state. Grocery list is re-derived by the engine on read.
-4. On failure the frontend rolls back and surfaces a clear error.
+2. Convex mutation `swapDish({ author, weekStart, day, meal, position, newDishId, reason, version })` validates: `version` matches the loaded version (optimistic concurrency); the (day, meal) slot exists and `position` is within `slot.dishes`; the new dish is in the library, matches the meal-time, is Active, and is in season; `reason` is non-empty after trim. Per `docs/product.md` §4 Principle 4 the fast loop stays permissive; §3 composition eligibility is not validated at swap time.
+3. On success the slot's `dishes[position]` updates to `{ dishId: newDishId, customLabel: null, source: "swapped", author, updatedAt: now }`, `version` increments, and a `manualChanges` row inserts in the same Convex transaction carrying the slot's pre-change `before`, the new `after`, the user's `reason`, `changeKind: "swap"`, and `status: "queued"`. The grocery list is re-derived by the engine on read.
+4. On failure the frontend rolls back. The tagged-union return distinguishes recoverable reasons (`version-mismatch`, `no-current-week`, `no-such-slot`, `no-such-position`, `dish-not-in-library`, `dish-not-meal-time`, `dish-not-active-or-in-season`) the UI handles inline; missing or empty `author` or `reason` throws.
+
+**Write (custom one-off):**
+1. Frontend calls `addCustomOneOff({ author, weekStart, day, meal, position, customLabel, reason, version })`.
+2. Patches `slot.dishes[position]` to `{ dishId: null, customLabel, source: "custom", author, updatedAt: now }` and inserts a `manualChanges` row with `changeKind: "custom"` in the same transaction.
 
 **Write (comment):**
-1. Frontend posts to `addComment(weekStart, attachedTo, text, author)`.
-2. Convex inserts a `queued` row in `comments`.
-3. Nothing else happens immediately. The slow loop consumes it later.
+1. Frontend posts to `addComment({ author, attachedTo, text })`.
+2. Convex inserts a `queued` row in `comments`. The slow loop consumes it later (see `MAINTENANCE.md` §1).
 
 ## 6. Auto-recovery middleware
 
