@@ -41,6 +41,9 @@ Every code-touching session works in its own git worktree on its own feature bra
 - `slow-loop/<date>` for slow-loop PRs. Example: `slow-loop/2026-07-12`.
 - `docs/maintenance-<date>` for canonical-doc reconciliation. Example: `docs/maintenance-2026-07-12`.
 - `chore/<short>` for tooling, deps, CI.
+- `data/enrichment-<n>` for content batches that add descriptions, recipes, and cook fields to existing dishes. Example: `data/enrichment-0`.
+- `data/photos-<n>` for content batches that add or refresh dish photos. Example: `data/photos-0`.
+- `data/expansion-<n>` for content batches that add new dishes to the library. Example: `data/expansion-0`.
 
 **Cleanup:** on merge, the EM removes the worktree (`git worktree remove`) and deletes the local branch.
 
@@ -141,7 +144,7 @@ The EM rejects PRs that exhibit any of:
 - Generalizing from one or two cases ("we could add a column to handle this and three other hypothetical cases").
 - Adding a Pydantic-style abstraction or helper before two existing call sites need it.
 - Touching `docs/engine.md` without a matching engine code change.
-- Touching `data/dishes.md` or `data/ingredients.md` outside a slow-loop PR.
+- Touching canonical dish data (`data/dishes.md`, `data/ingredients.md`) outside the two legitimate paths. Structural rule and library changes go through the slow loop. Content batches (descriptions, recipes, cook fields, photos, new dishes) go through reviewed content-batch PRs on `data/enrichment-*`, `data/photos-*`, or `data/expansion-*` branches, each reviewed by Rajat personally. Any other path is the anti-pattern.
 - Past-tense narrative in canonical docs ("we used to do X but now do Y").
 - "Refactor while I'm here" scope creep.
 - New libraries or platform services not in `docs/engineering.md` §1.
