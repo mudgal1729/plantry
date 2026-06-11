@@ -1,6 +1,24 @@
 import { describe, it, expect, vi } from "vitest";
-import { aggregateGroceryList, GROCERY_GROUPS } from "../src/groceryList.js";
-import type { Dish, Ingredient, PackSizeHeader } from "../src/data/schemas.js";
+import { aggregateGroceryList } from "../src/groceryList.js";
+import type { CatalogIngredient, Dish, Ingredient, PackSizeHeader } from "../src/data/schemas.js";
+
+// Test catalog: the grocery group + unit for every ingredient these tests use.
+// Mirrors the live ingredient catalog (data/ingredients.md Group column). An
+// ingredient deliberately absent here ("Dragonfruit") exercises the "Other"
+// fallback, which the live name-resolution validator makes unreachable for
+// real dishes but the aggregator still guards.
+const CATALOG: CatalogIngredient[] = [
+  { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", packSize: "200 g" },
+  { ingredient: "Curd", group: "Proteins and Dairy", unit: "g", packSize: "500 g" },
+  { ingredient: "Mushroom", group: "Vegetables", unit: "g", packSize: "200 g" },
+  { ingredient: "Chickpea", group: "Pantry", unit: "g" },
+  { ingredient: "Coconut Milk", group: "Pantry", unit: "ml" },
+  { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g" },
+  { ingredient: "Tomato", group: "Aromatics and Herbs", unit: "g" },
+  { ingredient: "Garlic", group: "Aromatics and Herbs", unit: "g" },
+  { ingredient: "Coriander Leaf", group: "Aromatics and Herbs", unit: "g" },
+  { ingredient: "Lemon", group: "Aromatics and Herbs", unit: "pcs" },
+];
 
 let nextId = 1000;
 
@@ -46,6 +64,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [],
       ingredients: [],
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     expect(result.groups).toEqual([]);
   });
@@ -61,6 +80,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
 
     const proteins = result.groups.find((g) => g.group === "Proteins and Dairy");
@@ -98,6 +118,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dishA, dishB],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
 
     const proteins = result.groups.find((g) => g.group === "Proteins and Dairy");
@@ -120,6 +141,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [roti, roti, roti],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const paneer = result.groups[0]?.items.find((i) => i.ingredient === "Paneer");
     expect(paneer?.quantity).toBe(300);
@@ -135,6 +157,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const aromatics = result.groups.find((g) => g.group === "Aromatics and Herbs");
     expect(aromatics).toBeDefined();
@@ -156,6 +179,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const other = result.groups.find((g) => g.group === "Other");
     expect(other).toBeDefined();
@@ -180,6 +204,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [proteinDish, pantryDish, aromaticDish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     expect(result.groups.map((g) => g.group)).toEqual([
       "Proteins and Dairy",
@@ -200,6 +225,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const aromatics = result.groups.find((g) => g.group === "Aromatics and Herbs");
     expect(aromatics!.items.map((i) => i.ingredient)).toEqual([
@@ -221,6 +247,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const pantry = result.groups.find((g) => g.group === "Pantry");
     expect(pantry).toBeDefined();
@@ -239,6 +266,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
         weekPicks: [dish],
         ingredients,
         packSizes: [PANEER_HEADER],
+        catalog: CATALOG,
       });
       const proteins = result.groups.find((g) => g.group === "Proteins and Dairy");
       const paneer = proteins!.items.find((i) => i.ingredient === "Paneer");
@@ -272,6 +300,7 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [d1, d2],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
 
     const flat = result.groups.flatMap((g) => g.items.map((i) => `${i.ingredient}|${i.unit}`));
@@ -298,28 +327,44 @@ describe("aggregateGroceryList — docs/product.md §3 item 3", () => {
       weekPicks: [dish, phantom],
       ingredients,
       packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
     });
     const paneer = result.groups[0]?.items.find((i) => i.ingredient === "Paneer");
     expect(paneer?.quantity).toBe(100);
   });
 });
 
-describe("GROCERY_GROUPS map", () => {
-  it("covers every group as a value", () => {
-    const groups = new Set(Object.values(GROCERY_GROUPS));
-    expect(groups.has("Proteins and Dairy")).toBe(true);
-    expect(groups.has("Pantry")).toBe(true);
-    expect(groups.has("Vegetables")).toBe(true);
-    expect(groups.has("Aromatics and Herbs")).toBe(true);
-    expect(groups.has("Other")).toBe(true);
+describe("catalog-driven grouping (single-homed in data/ingredients.md)", () => {
+  it("places each ingredient in its catalog Group", () => {
+    const byName = new Map(CATALOG.map((c) => [c.ingredient, c.group]));
+    expect(byName.get("Paneer")).toBe("Proteins and Dairy");
+    expect(byName.get("Curd")).toBe("Proteins and Dairy");
+    expect(byName.get("Chickpea")).toBe("Pantry");
+    expect(byName.get("Mushroom")).toBe("Vegetables");
+    expect(byName.get("Onion")).toBe("Aromatics and Herbs");
+    expect(byName.get("Coriander Leaf")).toBe("Aromatics and Herbs");
   });
 
-  it("places the headline ingredients per docs/product.md §3", () => {
-    expect(GROCERY_GROUPS["Paneer"]).toBe("Proteins and Dairy");
-    expect(GROCERY_GROUPS["Chicken"]).toBe("Proteins and Dairy");
-    expect(GROCERY_GROUPS["Chickpea"]).toBe("Pantry");
-    expect(GROCERY_GROUPS["Potato"]).toBe("Vegetables");
-    expect(GROCERY_GROUPS["Onion"]).toBe("Aromatics and Herbs");
-    expect(GROCERY_GROUPS["Coriander Leaf"]).toBe("Aromatics and Herbs");
+  it("groups picks by the catalog Group, honoring the judgment calls", () => {
+    // Onion/Tomato/Lemon -> Aromatics; Mushroom -> Vegetables; Coconut Milk ->
+    // Pantry. These are the institutional-memory groupings now living in the
+    // catalog rather than a code map.
+    const dish = makeDish();
+    const ingredients: Ingredient[] = [
+      row(dish.id, dish.name, "Mushroom", 200),
+      row(dish.id, dish.name, "Onion", 80),
+      row(dish.id, dish.name, "Coconut Milk", 100, "ml"),
+    ];
+    const result = aggregateGroceryList({
+      weekPicks: [dish],
+      ingredients,
+      packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
+    });
+    const groupOf = (name: string) =>
+      result.groups.find((g) => g.items.some((i) => i.ingredient === name))?.group;
+    expect(groupOf("Mushroom")).toBe("Vegetables");
+    expect(groupOf("Onion")).toBe("Aromatics and Herbs");
+    expect(groupOf("Coconut Milk")).toBe("Pantry");
   });
 });

@@ -1,15 +1,17 @@
 import { ZodError } from "zod";
+import { parse as parseYaml } from "yaml";
 import {
+  CatalogIngredientSchema,
   DishSchema,
   IngredientSchema,
   MenuHistoryRowSchema,
-  PackSizeHeaderSchema,
-  SeasonSchema,
+  type CatalogIngredient,
   type Dish,
+  type DishFile,
+  type DishIngredientRow,
   type Ingredient,
   type MenuHistoryRow,
   type PackSizeHeader,
-  type SeasonsField,
 } from "./schemas.js";
 
 interface ParsedTable {
@@ -40,20 +42,11 @@ function findTables(markdown: string): ParsedTable[] {
   while (i < lines.length) {
     const line = lines[i];
     const next = lines[i + 1];
-    if (
-      line &&
-      line.trim().startsWith("|") &&
-      next !== undefined &&
-      isDividerRow(next)
-    ) {
+    if (line && line.trim().startsWith("|") && next !== undefined && isDividerRow(next)) {
       const headers = splitRow(line);
       i += 2;
       const rows: string[][] = [];
-      while (
-        i < lines.length &&
-        lines[i].trim().startsWith("|") &&
-        !isDividerRow(lines[i])
-      ) {
+      while (i < lines.length && lines[i].trim().startsWith("|") && !isDividerRow(lines[i])) {
         rows.push(splitRow(lines[i]));
         i += 1;
       }
@@ -63,32 +56,6 @@ function findTables(markdown: string): ParsedTable[] {
     }
   }
   return tables;
-}
-
-function parseSeasons(raw: string, dishId: number): SeasonsField {
-  if (raw === "All") return "All";
-  const tokens = raw.split(",").map((t) => t.trim()).filter((t) => t.length > 0);
-  const parsed = tokens.map((t) => {
-    const r = SeasonSchema.safeParse(t);
-    if (!r.success) {
-      throw new Error(
-        `dish id ${dishId}: invalid Season token "${t}" in "${raw}"`,
-      );
-    }
-    return r.data;
-  });
-  if (parsed.length === 0) {
-    throw new Error(`dish id ${dishId}: Seasons cell is empty`);
-  }
-  return parsed;
-}
-
-function parseTags(raw: string): string[] {
-  if (raw.length === 0) return [];
-  return raw
-    .split(",")
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
 }
 
 function parseIntStrict(raw: string, label: string, rowKey: string): number {
@@ -103,151 +70,6 @@ function parseNumberStrict(raw: string, label: string, rowKey: string): number {
     throw new Error(`${rowKey}: ${label} must be a number, got "${raw}"`);
   }
   return parseFloat(raw);
-}
-
-const DISH_HEADERS = [
-  "ID",
-  "Name",
-  "Category",
-  "Time",
-  "Tags",
-  "Primary Ingredient",
-  "Preferred",
-  "Active",
-  "Satiety",
-  "Prep Min",
-  "Seasons",
-];
-
-export function parseDishes(markdown: string): Dish[] {
-  const tables = findTables(markdown);
-  if (tables.length === 0) {
-    throw new Error("parseDishes: no pipe table found in input");
-  }
-  const table = tables[0];
-  if (
-    table.headers.length !== DISH_HEADERS.length ||
-    !DISH_HEADERS.every((h, i) => h === table.headers[i])
-  ) {
-    throw new Error(
-      `parseDishes: unexpected headers ${JSON.stringify(table.headers)}`,
-    );
-  }
-  const dishes: Dish[] = [];
-  for (const cells of table.rows) {
-    if (cells.length !== DISH_HEADERS.length) {
-      throw new Error(
-        `parseDishes: row has ${cells.length} cells, expected ${DISH_HEADERS.length}: ${JSON.stringify(cells)}`,
-      );
-    }
-    const idStr = cells[0];
-    const rowKey = `dish row id=${idStr || "?"} name="${cells[1] || ""}"`;
-    const id = parseIntStrict(idStr, "ID", rowKey);
-    const dish = {
-      id,
-      name: cells[1],
-      category: cells[2],
-      time: cells[3],
-      tags: parseTags(cells[4]),
-      primaryIngredient: cells[5],
-      preferred: cells[6],
-      active: cells[7],
-      satiety: cells[8],
-      prepMinutes: parseIntStrict(cells[9], "Prep Min", rowKey),
-      seasons: parseSeasons(cells[10], id),
-    };
-    try {
-      dishes.push(DishSchema.parse(dish));
-    } catch (err) {
-      if (err instanceof ZodError) {
-        throw new Error(`${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
-      }
-      throw err;
-    }
-  }
-  return dishes;
-}
-
-const PACK_HEADERS = ["Ingredient", "Pack Size"];
-const INGREDIENT_HEADERS = ["Dish ID", "Dish Name", "Ingredient", "Quantity", "Unit"];
-
-export function parseIngredients(markdown: string): {
-  packSizes: PackSizeHeader[];
-  rows: Ingredient[];
-} {
-  const tables = findTables(markdown);
-  if (tables.length < 2) {
-    throw new Error(
-      `parseIngredients: expected two tables, found ${tables.length}`,
-    );
-  }
-  const packTable = tables[0];
-  const ingTable = tables[1];
-
-  if (
-    packTable.headers.length !== PACK_HEADERS.length ||
-    !PACK_HEADERS.every((h, i) => h === packTable.headers[i])
-  ) {
-    throw new Error(
-      `parseIngredients: unexpected pack-size headers ${JSON.stringify(packTable.headers)}`,
-    );
-  }
-  const packSizes: PackSizeHeader[] = [];
-  for (const cells of packTable.rows) {
-    if (cells.length !== PACK_HEADERS.length) {
-      throw new Error(
-        `parseIngredients: pack-size row has ${cells.length} cells, expected ${PACK_HEADERS.length}: ${JSON.stringify(cells)}`,
-      );
-    }
-    const rowKey = `pack-size row ingredient="${cells[0]}"`;
-    try {
-      packSizes.push(
-        PackSizeHeaderSchema.parse({ ingredient: cells[0], packSize: cells[1] }),
-      );
-    } catch (err) {
-      if (err instanceof ZodError) {
-        throw new Error(`${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
-      }
-      throw err;
-    }
-  }
-
-  if (
-    ingTable.headers.length !== INGREDIENT_HEADERS.length ||
-    !INGREDIENT_HEADERS.every((h, i) => h === ingTable.headers[i])
-  ) {
-    throw new Error(
-      `parseIngredients: unexpected ingredient headers ${JSON.stringify(ingTable.headers)}`,
-    );
-  }
-  const rows: Ingredient[] = [];
-  for (const cells of ingTable.rows) {
-    if (cells.length !== INGREDIENT_HEADERS.length) {
-      throw new Error(
-        `parseIngredients: ingredient row has ${cells.length} cells, expected ${INGREDIENT_HEADERS.length}: ${JSON.stringify(cells)}`,
-      );
-    }
-    const rowKey = `ingredient row dish_id=${cells[0]} ingredient="${cells[2]}"`;
-    const dishId = parseIntStrict(cells[0], "Dish ID", rowKey);
-    const quantity = parseNumberStrict(cells[3], "Quantity", rowKey);
-    try {
-      rows.push(
-        IngredientSchema.parse({
-          dishId,
-          dishName: cells[1],
-          ingredient: cells[2],
-          quantity,
-          unit: cells[4],
-        }),
-      );
-    } catch (err) {
-      if (err instanceof ZodError) {
-        throw new Error(`${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
-      }
-      throw err;
-    }
-  }
-  return { packSizes, rows };
 }
 
 const MENU_HISTORY_HEADERS = ["Week Start", "Day", "Meal", "Dish Name", "Dish ID"];
@@ -282,11 +104,7 @@ function findWeekSections(markdown: string): WeekSection[] {
     const headers = splitRow(lines[j]);
     let k = j + 2;
     const rows: string[][] = [];
-    while (
-      k < lines.length &&
-      lines[k].trim().startsWith("|") &&
-      !isDividerRow(lines[k])
-    ) {
+    while (k < lines.length && lines[k].trim().startsWith("|") && !isDividerRow(lines[k])) {
       rows.push(splitRow(lines[k]));
       k += 1;
     }
@@ -337,10 +155,183 @@ export function parseMenuHistory(markdown: string): MenuHistoryRow[] {
         );
       } catch (err) {
         if (err instanceof ZodError) {
-          throw new Error(`${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
+          throw new Error(
+            `${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`,
+          );
         }
         throw err;
       }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Per-dish file + ingredient catalog parsing (the slice-1.2 data layout).
+// ---------------------------------------------------------------------------
+
+const DISH_INGREDIENT_HEADERS = ["Ingredient", "Quantity", "Unit"];
+
+/**
+ * Parse one per-dish file (data/dishes/<slug>.md). The `slug` is the filename
+ * stem; the parser checks it matches the frontmatter via the validators, not
+ * here. Frontmatter is read with the `yaml` library; the ingredient rows come
+ * from the single `## Ingredients` pipe table (which may have zero body rows).
+ */
+export function parseDishFile(slug: string, markdown: string): DishFile {
+  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!fmMatch) {
+    throw new Error(`parseDishFile(${slug}): missing YAML frontmatter fenced by '---'`);
+  }
+  let raw: unknown;
+  try {
+    raw = parseYaml(fmMatch[1]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`parseDishFile(${slug}): frontmatter YAML error: ${message}`);
+  }
+
+  let dish: Dish;
+  try {
+    dish = DishSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      throw new Error(
+        `parseDishFile(${slug}): ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`,
+      );
+    }
+    throw err;
+  }
+
+  const tables = findTables(markdown.slice(fmMatch[0].length));
+  if (tables.length === 0) {
+    throw new Error(`parseDishFile(${slug}): no '## Ingredients' pipe table found`);
+  }
+  const table = tables[0];
+  if (
+    table.headers.length !== DISH_INGREDIENT_HEADERS.length ||
+    !DISH_INGREDIENT_HEADERS.every((h, i) => h === table.headers[i])
+  ) {
+    throw new Error(
+      `parseDishFile(${slug}): unexpected ingredient headers ${JSON.stringify(table.headers)}`,
+    );
+  }
+  const ingredients: DishIngredientRow[] = [];
+  for (const cells of table.rows) {
+    if (cells.length !== DISH_INGREDIENT_HEADERS.length) {
+      throw new Error(
+        `parseDishFile(${slug}): ingredient row has ${cells.length} cells, expected ${DISH_INGREDIENT_HEADERS.length}: ${JSON.stringify(cells)}`,
+      );
+    }
+    const rowKey = `dish ${slug} ingredient="${cells[0]}"`;
+    const quantity = parseNumberStrict(cells[1], "Quantity", rowKey);
+    try {
+      ingredients.push(
+        IngredientSchema.pick({
+          ingredient: true,
+          quantity: true,
+          unit: true,
+        }).parse({ ingredient: cells[0], quantity, unit: cells[2] }),
+      );
+    } catch (err) {
+      if (err instanceof ZodError) {
+        throw new Error(
+          `${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`,
+        );
+      }
+      throw err;
+    }
+  }
+
+  return { slug, dish, ingredients };
+}
+
+/**
+ * Flatten a set of parsed dish files into the engine's consumed shapes: the
+ * `Dish[]` library and the flat `Ingredient[]` rows (each carrying its dish's
+ * id + name). Files are taken in the order given; the bake sorts by id so the
+ * baked output is deterministic regardless of directory read order.
+ */
+export function dishFilesToLibrary(files: DishFile[]): {
+  dishes: Dish[];
+  ingredients: Ingredient[];
+} {
+  const dishes: Dish[] = [];
+  const ingredients: Ingredient[] = [];
+  for (const file of files) {
+    dishes.push(file.dish);
+    for (const row of file.ingredients) {
+      ingredients.push({
+        dishId: file.dish.id,
+        dishName: file.dish.name,
+        ingredient: row.ingredient,
+        quantity: row.quantity,
+        unit: row.unit,
+      });
+    }
+  }
+  return { dishes, ingredients };
+}
+
+const CATALOG_HEADERS = ["Ingredient", "Group", "Unit", "Pack Size"];
+
+/**
+ * Parse the ingredient catalog (data/ingredients.md). One row per canonical
+ * ingredient; a blank Pack Size cell marks an untracked ingredient.
+ */
+export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
+  const tables = findTables(markdown);
+  if (tables.length === 0) {
+    throw new Error("parseIngredientCatalog: no pipe table found in input");
+  }
+  const table = tables[0];
+  if (
+    table.headers.length !== CATALOG_HEADERS.length ||
+    !CATALOG_HEADERS.every((h, i) => h === table.headers[i])
+  ) {
+    throw new Error(`parseIngredientCatalog: unexpected headers ${JSON.stringify(table.headers)}`);
+  }
+  const out: CatalogIngredient[] = [];
+  for (const cells of table.rows) {
+    if (cells.length !== CATALOG_HEADERS.length) {
+      throw new Error(
+        `parseIngredientCatalog: row has ${cells.length} cells, expected ${CATALOG_HEADERS.length}: ${JSON.stringify(cells)}`,
+      );
+    }
+    const rowKey = `catalog row ingredient="${cells[0]}"`;
+    const packSize = cells[3].length > 0 ? cells[3] : undefined;
+    try {
+      out.push(
+        CatalogIngredientSchema.parse({
+          ingredient: cells[0],
+          group: cells[1],
+          unit: cells[2],
+          ...(packSize !== undefined ? { packSize } : {}),
+        }),
+      );
+    } catch (err) {
+      if (err instanceof ZodError) {
+        throw new Error(
+          `${rowKey}: ${err.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`,
+        );
+      }
+      throw err;
+    }
+  }
+  return out;
+}
+
+/**
+ * Derive the engine's pack-size header shape (PackSizeHeader[]) from the
+ * catalog. Only tracked ingredients (those with a Pack Size) are included, in
+ * catalog order, matching the legacy header table the §6 consolidation ledger
+ * consumes.
+ */
+export function catalogToPackSizes(catalog: CatalogIngredient[]): PackSizeHeader[] {
+  const out: PackSizeHeader[] = [];
+  for (const row of catalog) {
+    if (row.packSize !== undefined) {
+      out.push({ ingredient: row.ingredient, packSize: row.packSize });
     }
   }
   return out;

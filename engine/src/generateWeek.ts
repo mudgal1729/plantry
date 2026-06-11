@@ -1,10 +1,4 @@
-import type {
-  Dish,
-  Ingredient,
-  MenuHistoryRow,
-  PackSizeHeader,
-  Season,
-} from "./data/schemas.js";
+import type { Dish, Ingredient, MenuHistoryRow, PackSizeHeader, Season } from "./data/schemas.js";
 import type { Day, Meal } from "./eligibility.js";
 import { weekSchedule, type SlotPlan } from "./schedule.js";
 import {
@@ -18,15 +12,8 @@ import {
   type Menu3CandidateSet,
   type Menu4CandidateSet,
 } from "./composition.js";
-import {
-  rankCandidates,
-  type ConsolidationContext,
-} from "./priority.js";
-import {
-  applyPick,
-  emptyLedger,
-  type IngredientLedger,
-} from "./consolidation.js";
+import { rankCandidates, type ConsolidationContext } from "./priority.js";
+import { applyPick, emptyLedger, type IngredientLedger } from "./consolidation.js";
 import { applyCap } from "./cap.js";
 
 export interface GenerateWeekArgs {
@@ -37,7 +24,7 @@ export interface GenerateWeekArgs {
   season: Season;
   /** Per-dish ingredient rows, used to drive the §6 consolidation ledger. */
   ingredients: Ingredient[];
-  /** Tracked ingredient pack-size header from data/ingredients.md. */
+  /** Tracked-ingredient pack sizes, derived from the ingredient catalog (data/ingredients.md). */
   packSizes: PackSizeHeader[];
   /** Optional RNG; defaults to Math.random for the Saturday alternation choice. */
   rng?: () => number;
@@ -265,10 +252,7 @@ function rank(args: PickSlotArgs, pool: Dish[]): Dish[] {
  * then B (complete_carb + accompaniment), then C (dry main + plain carb).
  * The first option whose pools both yield a pick wins.
  */
-function pickBreakfastPair(
-  args: PickSlotArgs,
-  set: BreakfastWeekdayPairCandidateSet,
-): Dish[] {
+function pickBreakfastPair(args: PickSlotArgs, set: BreakfastWeekdayPairCandidateSet): Dish[] {
   const optionA = tryPair(args, set.optionA.completeMeal, set.optionA.fruit);
   if (optionA) return optionA;
   const optionB = tryPair(args, set.optionB.completeCarb, set.optionB.accompaniment);
@@ -283,15 +267,15 @@ function tryPair(args: PickSlotArgs, leadPool: Dish[], partnerPool: Dish[]): Dis
   const leadRanked = rank(args, leadPool);
   const lead = leadRanked[0];
   // Avoid double-picking the same dish across positions when pools overlap.
-  const partnerRanked = rank(args, partnerPool.filter((d) => d.id !== lead.id));
+  const partnerRanked = rank(
+    args,
+    partnerPool.filter((d) => d.id !== lead.id),
+  );
   if (partnerRanked.length === 0) return null;
   return [lead, partnerRanked[0]];
 }
 
-function pickBreakfastSingle(
-  args: PickSlotArgs,
-  set: BreakfastSinglePickCandidateSet,
-): Dish[] {
+function pickBreakfastSingle(args: PickSlotArgs, set: BreakfastSinglePickCandidateSet): Dish[] {
   const ranked = rank(args, set.pool);
   if (ranked.length === 0) return [];
   return [ranked[0]];
@@ -309,7 +293,10 @@ function pickMenu1(args: PickSlotArgs, set: Menu1CandidateSet): Dish[] {
   const hp = hpRanked[0];
   const partnerPool =
     hp.category === "Dry dish" ? set.partnerWhenHpIsDry : set.partnerWhenHpIsGravy;
-  const partnerRanked = rank(args, partnerPool.filter((d) => d.id !== hp.id));
+  const partnerRanked = rank(
+    args,
+    partnerPool.filter((d) => d.id !== hp.id),
+  );
   const partner = partnerRanked[0];
   const carbRanked = rank(args, set.lunchCarb);
   const carb = carbRanked[0];
@@ -319,7 +306,10 @@ function pickMenu1(args: PickSlotArgs, set: Menu1CandidateSet): Dish[] {
 function pickMenu2(args: PickSlotArgs, set: Menu2CandidateSet): Dish[] {
   const ketoRanked = rank(args, set.keto);
   const keto = ketoRanked[0];
-  const gravyRanked = rank(args, set.nonHpGravy.filter((d) => keto && d.id !== keto.id));
+  const gravyRanked = rank(
+    args,
+    set.nonHpGravy.filter((d) => keto && d.id !== keto.id),
+  );
   const gravy = gravyRanked[0];
   const dryRanked = rank(
     args,
@@ -337,15 +327,27 @@ function pickMenu2(args: PickSlotArgs, set: Menu2CandidateSet): Dish[] {
  */
 function pickMenu3(args: PickSlotArgs, set: Menu3CandidateSet): Dish[] {
   const lead = pickSubstitutedLead(args, set.completeMealHp);
-  const acc = rank(args, set.accompaniment.filter((d) => !lead || d.id !== lead.id))[0];
-  const dessert = rank(args, set.dessert.filter((d) => !lead || d.id !== lead.id))[0];
+  const acc = rank(
+    args,
+    set.accompaniment.filter((d) => !lead || d.id !== lead.id),
+  )[0];
+  const dessert = rank(
+    args,
+    set.dessert.filter((d) => !lead || d.id !== lead.id),
+  )[0];
   return compact([lead, acc, dessert]);
 }
 
 function pickMenu4(args: PickSlotArgs, set: Menu4CandidateSet): Dish[] {
   const lead = pickSubstitutedLead(args, set.completeMealNonHp);
-  const keto = rank(args, set.keto.filter((d) => !lead || d.id !== lead.id))[0];
-  const acc = rank(args, set.accompaniment.filter((d) => !lead || d.id !== lead.id))[0];
+  const keto = rank(
+    args,
+    set.keto.filter((d) => !lead || d.id !== lead.id),
+  )[0];
+  const acc = rank(
+    args,
+    set.accompaniment.filter((d) => !lead || d.id !== lead.id),
+  )[0];
   return compact([lead, keto, acc]);
 }
 
@@ -508,9 +510,7 @@ export function rankCandidatesForSlot(args: RankCandidatesForSlotArgs): Dish[] {
   });
 
   const sameDayPrimary =
-    meal === "Lunch" && sameDayBreakfastPick
-      ? sameDayBreakfastPick.primaryIngredient
-      : undefined;
+    meal === "Lunch" && sameDayBreakfastPick ? sameDayBreakfastPick.primaryIngredient : undefined;
 
   const context: ConsolidationContext = { ledger, ingredients };
 

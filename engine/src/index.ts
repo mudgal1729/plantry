@@ -1,9 +1,27 @@
 export const VERSION = "0.0.0";
 
 export * from "./data/schemas.js";
-export { parseDishes, parseIngredients, parseMenuHistory } from "./data/parse.js";
-export { serializeDishes, serializeIngredients, serializeMenuHistory } from "./data/serialize.js";
-export { validateMenuHistoryAgainstLibrary, validatePackSizesUsed } from "./data/validators.js";
+export {
+  parseMenuHistory,
+  parseDishFile,
+  parseIngredientCatalog,
+  dishFilesToLibrary,
+  catalogToPackSizes,
+} from "./data/parse.js";
+export {
+  serializeMenuHistory,
+  serializeDishFile,
+  serializeIngredientCatalog,
+} from "./data/serialize.js";
+export {
+  validateMenuHistoryAgainstLibrary,
+  validatePackSizesUsed,
+  validateDishFiles,
+  validateCatalogGroups,
+  validateIngredientNamesResolve,
+  validateDishFileRoundTrip,
+} from "./data/validators.js";
+export { baseSlug, slugForDishes } from "./data/slug.js";
 export { eligibleDishes } from "./eligibility.js";
 export type { EligibleDishesArgs, Slot, Day, Meal } from "./eligibility.js";
 export { weekSchedule } from "./schedule.js";
@@ -65,5 +83,5 @@ export type {
   GeneratedWeekSlot,
   RankCandidatesForSlotArgs,
 } from "./generateWeek.js";
-export { aggregateGroceryList, GROCERY_GROUPS } from "./groceryList.js";
-export type { GroceryGroup, GroceryItem, GroceryList } from "./groceryList.js";
+export { aggregateGroceryList } from "./groceryList.js";
+export type { GroceryItem, GroceryList } from "./groceryList.js";

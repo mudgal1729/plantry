@@ -21,10 +21,10 @@ export const DEFAULT_LEFTOVER_THRESHOLD_GRAMS = 50;
 /**
  * Fresh produce items named in docs/engine.md §6 soft-consolidation paragraph.
  * Source: "capsicum, tomato, cucumber, onion, mint, coriander". Canonical
- * ingredient names in data/ingredients.md spell mint as "Mint Leaf" and
- * coriander as "Coriander Leaf", so both forms map to the same fresh-item
- * concept and we list every form a Dish.primaryIngredient or Ingredient row
- * might use.
+ * ingredient names in the ingredient catalog (data/ingredients.md) spell mint
+ * as "Mint Leaf" and coriander as "Coriander Leaf", so both forms map to the
+ * same fresh-item concept and we list every form a Dish.primaryIngredient or
+ * Ingredient row might use.
  */
 export const FRESH_PRODUCE_ITEMS: ReadonlySet<string> = new Set([
   "Capsicum",
@@ -39,8 +39,8 @@ export const FRESH_PRODUCE_ITEMS: ReadonlySet<string> = new Set([
  * Parse a pack-size string ("200 g", "500 g", ...) into grams. Pack sizes in
  * the live data are all grams (verified against data/ingredients.md). Any
  * non-gram pack size is treated as 0 (unconsolidatable), with the caller
- * deciding whether to keep the entry. Today every entry in the header table
- * is grams so this branch is defensive.
+ * deciding whether to keep the entry. Today every tracked Pack Size in the
+ * ingredient catalog is grams so this branch is defensive.
  */
 function parsePackSizeGrams(packSize: string): number {
   const match = packSize.trim().match(/^(\d+(?:\.\d+)?)\s*g$/i);
@@ -103,8 +103,7 @@ export function applyPick(
       const needed = Math.ceil(entry.usedGrams / entry.packSizeGrams);
       entry.packsOnBuyList = needed;
     }
-    entry.leftoverGrams =
-      entry.packsOnBuyList * entry.packSizeGrams - entry.usedGrams;
+    entry.leftoverGrams = entry.packsOnBuyList * entry.packSizeGrams - entry.usedGrams;
   }
   return next;
 }

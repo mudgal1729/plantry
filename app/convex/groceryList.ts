@@ -1,6 +1,6 @@
 import { query } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
-import { dishes, packSizes, ingredients } from "@plantry/engine/library";
+import { dishes, packSizes, ingredients, catalog } from "@plantry/engine/library";
 import { aggregateGroceryList, type Dish, type GroceryList } from "@plantry/engine";
 
 /**
@@ -14,9 +14,9 @@ import { aggregateGroceryList, type Dish, type GroceryList } from "@plantry/engi
  * quantities aggregated across the week, tracked items rounded to the next
  * pack multiple. Pantry staples (flour, oil, salt, common spices, base rice)
  * are omitted unless a dish lists them explicitly. Here every ingredient that
- * appears in `data/ingredients.md` for a picked dish is listed; the slow loop
- * is the path that prunes a row out of the ingredient sheet if Rajat decides a
- * given pantry staple should not be on the list.
+ * a picked dish lists (in its `data/dishes/<slug>.md` Ingredients table) is
+ * listed; the slow loop is the path that prunes an ingredient row out of a dish
+ * file if Rajat decides a given pantry staple should not be on the list.
  *
  * Custom one-offs (slots whose `dishId` is null) do not contribute to the
  * grocery list in v1: their ingredient quantities are not modelled in the
@@ -70,6 +70,7 @@ export const getGroceryList = query({
       weekPicks,
       ingredients,
       packSizes,
+      catalog,
     });
   },
 });

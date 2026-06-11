@@ -28,10 +28,7 @@ export type Season = z.infer<typeof SeasonSchema>;
 export const YesNoSchema = z.enum(["Yes", "No"]);
 export type YesNo = z.infer<typeof YesNoSchema>;
 
-export const SeasonsFieldSchema = z.union([
-  z.literal("All"),
-  z.array(SeasonSchema).min(1),
-]);
+export const SeasonsFieldSchema = z.union([z.literal("All"), z.array(SeasonSchema).min(1)]);
 export type SeasonsField = z.infer<typeof SeasonsFieldSchema>;
 
 export const DishSchema = z.object({
@@ -66,6 +63,57 @@ export const PackSizeHeaderSchema = z.object({
   packSize: z.string().min(1),
 });
 export type PackSizeHeader = z.infer<typeof PackSizeHeaderSchema>;
+
+/**
+ * Grocery groups, in the fixed §3 buy-list order. Single-homed here and in the
+ * ingredient catalog's Group column; the runtime aggregator
+ * (engine/src/groceryList.ts) reads the catalog rather than a code map.
+ */
+export const GroceryGroupSchema = z.enum([
+  "Proteins and Dairy",
+  "Pantry",
+  "Vegetables",
+  "Aromatics and Herbs",
+  "Other",
+]);
+export type GroceryGroup = z.infer<typeof GroceryGroupSchema>;
+
+/**
+ * One row of the ingredient catalog (data/ingredients.md). One row per
+ * canonical ingredient. `packSize` present marks a tracked ingredient (the
+ * pack-rounded buy unit used by §6 consolidation); absent marks an untracked
+ * staple bought by weight. `group` is the user-facing grocery-list bucket.
+ */
+export const CatalogIngredientSchema = z.object({
+  ingredient: z.string().min(1),
+  group: GroceryGroupSchema,
+  unit: IngredientUnitSchema,
+  packSize: z.string().min(1).optional(),
+});
+export type CatalogIngredient = z.infer<typeof CatalogIngredientSchema>;
+
+/** Frontmatter-only view of a dish (per-dish file, no ingredient rows). */
+export const DishFrontmatterSchema = DishSchema;
+export type DishFrontmatter = z.infer<typeof DishFrontmatterSchema>;
+
+/** A single ingredient row inside a per-dish file (dish identity implied). */
+export const DishIngredientRowSchema = z.object({
+  ingredient: z.string().min(1),
+  quantity: z.number().nonnegative(),
+  unit: IngredientUnitSchema,
+});
+export type DishIngredientRow = z.infer<typeof DishIngredientRowSchema>;
+
+/**
+ * A parsed per-dish file: the frontmatter dish plus its ingredient rows and the
+ * slug derived from (and matching) the filename.
+ */
+export const DishFileSchema = z.object({
+  slug: z.string().min(1),
+  dish: DishSchema,
+  ingredients: z.array(DishIngredientRowSchema),
+});
+export type DishFile = z.infer<typeof DishFileSchema>;
 
 export const DayNameSchema = z.enum([
   "Monday",

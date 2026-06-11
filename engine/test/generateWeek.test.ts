@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { generateWeek } from "../src/generateWeek.js";
-import {
-  parseDishes,
-  parseIngredients,
-  parseMenuHistory,
-} from "../src/data/parse.js";
+import { loadLiveData } from "./loadLive.js";
 import type {
   Dish,
   Ingredient,
@@ -298,7 +291,11 @@ describe("generateWeek — top-level engine", () => {
       // The pinned dish should appear on a weekday lunch (not Saturday).
       const weekdaysWithPinned = week.days
         .filter((d) => d.day !== "Sat")
-        .filter((d) => d.slots.some((s) => s.meal === "Lunch" && s.dishes.some((dish) => dish.id === pinned!.id)));
+        .filter((d) =>
+          d.slots.some(
+            (s) => s.meal === "Lunch" && s.dishes.some((dish) => dish.id === pinned!.id),
+          ),
+        );
       expect(weekdaysWithPinned.length).toBe(1);
       // The substituted day's lunch should have 3 items (Menu 3 or 4 form),
       // not 3 (Menu 1) or 4 (Menu 2). For an HP-tagged lead it's Menu 3 form.
@@ -345,15 +342,7 @@ describe("generateWeek — top-level engine", () => {
   });
 
   describe("smoke against the live library + history", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const repoRoot = resolve(here, "../..");
-    const dataDir = resolve(repoRoot, "data");
-    const dishesMd = readFileSync(resolve(dataDir, "dishes.md"), "utf8");
-    const ingredientsMd = readFileSync(resolve(dataDir, "ingredients.md"), "utf8");
-    const historyMd = readFileSync(resolve(dataDir, "menu_history.md"), "utf8");
-    const library = parseDishes(dishesMd);
-    const { packSizes, rows: ingredients } = parseIngredients(ingredientsMd);
-    const history = parseMenuHistory(historyMd);
+    const { library, packSizes, ingredients, history } = loadLiveData();
 
     for (const season of ["Summer", "Monsoon", "Winter"] as Season[]) {
       it(`generates a complete week against live data in ${season}`, () => {
@@ -367,14 +356,7 @@ describe("generateWeek — top-level engine", () => {
           rng: () => 0.3,
           lastSaturdayMenu: 3,
         });
-        expect(week.days.map((d) => d.day)).toEqual([
-          "Mon",
-          "Tue",
-          "Wed",
-          "Thu",
-          "Fri",
-          "Sat",
-        ]);
+        expect(week.days.map((d) => d.day)).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
         // Every slot has at least one dish.
         for (const day of week.days) {
           for (const slot of day.slots) {

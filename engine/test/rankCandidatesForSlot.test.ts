@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { rankCandidatesForSlot } from "../src/generateWeek.js";
-import {
-  parseDishes,
-  parseIngredients,
-  parseMenuHistory,
-} from "../src/data/parse.js";
+import { loadLiveData } from "./loadLive.js";
 import type { Dish, MenuHistoryRow } from "../src/data/schemas.js";
 
 let nextId = 1;
@@ -135,16 +128,7 @@ describe("rankCandidatesForSlot — swap-UI ranking", () => {
   });
 
   describe("live data smoke", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const repoRoot = resolve(here, "../..");
-    const dataDir = resolve(repoRoot, "data");
-    const library = parseDishes(readFileSync(resolve(dataDir, "dishes.md"), "utf8"));
-    const { packSizes, rows: ingredients } = parseIngredients(
-      readFileSync(resolve(dataDir, "ingredients.md"), "utf8"),
-    );
-    const history = parseMenuHistory(
-      readFileSync(resolve(dataDir, "menu_history.md"), "utf8"),
-    );
+    const { library, packSizes, ingredients, history } = loadLiveData();
 
     it("returns a non-empty ranked list for Mon Lunch against the live library", () => {
       const ranked = rankCandidatesForSlot({
