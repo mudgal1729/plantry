@@ -20,7 +20,12 @@ export {
   validateCatalogGroups,
   validateIngredientNamesResolve,
   validateDishFileRoundTrip,
+  coverageReport,
+  poolCoverageReport,
+  hpProteinConsistencyReport,
+  HP_PROTEIN_THRESHOLD_PER_PERSON,
 } from "./data/validators.js";
+export type { CoverageReport, PoolCount, HpProteinDrift } from "./data/validators.js";
 export { baseSlug, slugForDishes } from "./data/slug.js";
 export { eligibleDishes } from "./eligibility.js";
 export type { EligibleDishesArgs, Slot, Day, Meal } from "./eligibility.js";
@@ -85,3 +90,5 @@ export type {
 } from "./generateWeek.js";
 export { aggregateGroceryList } from "./groceryList.js";
 export type { GroceryItem, GroceryList } from "./groceryList.js";
+export { deriveDishMacros, proteinToCarbRatio, HOUSEHOLD_SERVINGS } from "./nutrition.js";
+export type { DishMacros } from "./nutrition.js";

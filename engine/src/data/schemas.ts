@@ -31,6 +31,15 @@ export type YesNo = z.infer<typeof YesNoSchema>;
 export const SeasonsFieldSchema = z.union([z.literal("All"), z.array(SeasonSchema).min(1)]);
 export type SeasonsField = z.infer<typeof SeasonsFieldSchema>;
 
+/**
+ * Cooking complexity, an enum the UI maps to plain-language labels ("Easy to
+ * cook", "Cook will need some help", "Takes time and effort"). The data stores
+ * only the enum (Principle 7: display decoupled from structure); the labels
+ * live in the PWA, never here.
+ */
+export const ComplexitySchema = z.enum(["Easy", "Medium", "Hard"]);
+export type Complexity = z.infer<typeof ComplexitySchema>;
+
 export const DishSchema = z.object({
   id: z.number().int().positive(),
   name: z.string().min(1),
@@ -43,6 +52,27 @@ export const DishSchema = z.object({
   satiety: SatietySchema,
   prepMinutes: z.number().int().nonnegative(),
   seasons: SeasonsFieldSchema,
+  // Enrichment fields (design-revamp §1.1, slice 2.1). All optional during the
+  // transition: every current dish file omits them and parses unchanged; the UI
+  // degrades gracefully when they are absent (§1.5 coverage ratchet). Population
+  // is slice 2.2.
+  /** Cooking complexity enum; the UI renders the plain-language label. */
+  complexity: ComplexitySchema.optional(),
+  /** Free-text skill note (e.g. "Comfortable, browning matters"). */
+  skill: z.string().min(1).optional(),
+  /** Free-text special equipment note (e.g. "Heavy kadhai"). */
+  equipment: z.string().min(1).optional(),
+  /** Free-text note for an ingredient that must be bought specially. */
+  buySpecially: z.string().min(1).optional(),
+  /** Free-text day-before prep; present only when day-before work exists. */
+  prePrep: z.string().min(1).optional(),
+  /** Photo filename under data/dish-photos/; CI validates existence in 2.x. */
+  photo: z.string().min(1).optional(),
+  // Body-prose conventions (parsed from the markdown body, not frontmatter).
+  /** One-line description: the first body paragraph before `## Ingredients`. */
+  description: z.string().min(1).optional(),
+  /** Numbered steps from a `## Recipe` section, one string per step. */
+  recipe: z.array(z.string().min(1)).min(1).optional(),
 });
 export type Dish = z.infer<typeof DishSchema>;
 
@@ -89,6 +119,18 @@ export const CatalogIngredientSchema = z.object({
   group: GroceryGroupSchema,
   unit: IngredientUnitSchema,
   packSize: z.string().min(1).optional(),
+  // Macro columns (design-revamp §1.1, slice 2.1). Schema only this slice;
+  // every cell ships blank and population is slice 2.2. A blank cell reads as
+  // absent here and as zero in nutrition derivation (engine/src/nutrition.ts).
+  /**
+   * Grams per piece, for `pcs`-unit ingredients only (an egg is about 50 g), so
+   * macro math can convert pieces to grams. Blank/absent for non-pcs rows.
+   */
+  gramsPerPiece: z.number().positive().optional(),
+  /** Protein grams per 100 g of the ingredient. Blank reads as zero. */
+  proteinPer100g: z.number().nonnegative().optional(),
+  /** Carbohydrate grams per 100 g of the ingredient. Blank reads as zero. */
+  carbsPer100g: z.number().nonnegative().optional(),
 });
 export type CatalogIngredient = z.infer<typeof CatalogIngredientSchema>;
 

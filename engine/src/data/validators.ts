@@ -2,13 +2,25 @@ import type {
   CatalogIngredient,
   Dish,
   DishFile,
+  GroceryGroup,
   Ingredient,
   MenuHistoryRow,
   PackSizeHeader,
+  Season,
 } from "./schemas.js";
 import { CatalogIngredientSchema, DishSchema } from "./schemas.js";
 import { baseSlug, slugForDishes } from "./slug.js";
 import { serializeDishFile } from "./serialize.js";
+import { deriveDishMacros } from "../nutrition.js";
+import { eligibleDishes } from "../eligibility.js";
+import {
+  breakfastWeekdayPair,
+  breakfastSinglePick,
+  menu1,
+  menu2,
+  menu3,
+  menu4,
+} from "../composition.js";
 
 export function validateMenuHistoryAgainstLibrary(history: MenuHistoryRow[], dishes: Dish[]): void {
   const dishIds = new Set(dishes.map((d) => d.id));
@@ -190,4 +202,197 @@ export function validateDishFileRoundTrip(file: DishFile, original: string): voi
       `validateDishFileRoundTrip: dish "${file.slug}" does not round-trip byte-identical`,
     );
   }
+}
+
+// ===========================================================================
+// Reporting layer (design-revamp §1.3, slice 2.1).
+//
+// These are REPORTING severity, NOT blocking. They never throw on a coverage
+// gap or a thin pool; they return structured data that engine/scripts/reports.ts
+// prints in CI output and the slow loop later consumes. The blocking validators
+// above keep facts TRUE; these reports keep the library GOOD, which is judgment
+// CI cannot make. Blank macros (every cell this slice, until 2.2) are EXPECTED:
+// the coverage report reading near-zero on macros is correct, not a failure.
+// ===========================================================================
+
+const ALL_SEASONS: readonly Season[] = ["Summer", "Monsoon", "Winter"];
+
+/**
+ * Catalog rows that SHOULD carry macros, so the coverage denominator is not
+ * diluted by spices and aromatics that legitimately stay blank forever
+ * (design-revamp §1.1: "spices and aromatics can stay blank forever, protein
+ * sources and staples cannot"). Heuristic, reporting-only: rows in the food
+ * groups (Proteins and Dairy, Pantry, Vegetables) are macro-relevant; Aromatics
+ * and Herbs and Other are not. Tuning this set never blocks a build.
+ */
+const MACRO_RELEVANT_GROUPS: ReadonlySet<GroceryGroup> = new Set<GroceryGroup>([
+  "Proteins and Dairy",
+  "Pantry",
+  "Vegetables",
+]);
+
+function isMacroRelevant(row: CatalogIngredient): boolean {
+  return MACRO_RELEVANT_GROUPS.has(row.group);
+}
+
+function hasMacros(row: CatalogIngredient): boolean {
+  return row.proteinPer100g !== undefined || row.carbsPer100g !== undefined;
+}
+
+export interface CoverageReport {
+  activeDishCount: number;
+  /** Count of active dishes carrying each enrichment field. */
+  withDescription: number;
+  withRecipe: number;
+  withComplexity: number;
+  withPhoto: number;
+  /** Macro-relevant catalog rows, and how many carry any macro value. */
+  macroRelevantCount: number;
+  macroRelevantWithMacros: number;
+}
+
+/**
+ * Enrichment + macro coverage over the active library and the catalog. The
+ * ratchet slice 2.2+ burns down. Active dishes only (inactive dishes are not
+ * shown in the UI, so their enrichment does not matter yet).
+ */
+export function coverageReport(dishes: Dish[], catalog: CatalogIngredient[]): CoverageReport {
+  const active = dishes.filter((d) => d.active === "Yes");
+  const macroRelevant = catalog.filter(isMacroRelevant);
+  return {
+    activeDishCount: active.length,
+    withDescription: active.filter((d) => d.description !== undefined).length,
+    withRecipe: active.filter((d) => d.recipe !== undefined).length,
+    withComplexity: active.filter((d) => d.complexity !== undefined).length,
+    withPhoto: active.filter((d) => d.photo !== undefined).length,
+    macroRelevantCount: macroRelevant.length,
+    macroRelevantWithMacros: macroRelevant.filter(hasMacros).length,
+  };
+}
+
+/** One composition slot's candidate count, for one season. */
+export interface PoolCount {
+  season: Season;
+  /** Composition slot label, mirroring docs/engine.md §3. */
+  slot: string;
+  count: number;
+}
+
+/**
+ * For each composition slot in docs/engine.md §3, per season, the count of
+ * eligible candidates. Surfaces thin pools (the source of repetition) and flags
+ * when a season change strands a slot. The slot pools come from the live
+ * composition functions, so the report cannot drift from the engine.
+ *
+ * Lunch carbs are reported as the §3.1 default pool (no Rice-already-used
+ * constraint applied: this is a static pool snapshot, not a within-week pick).
+ */
+export function poolCoverageReport(library: Dish[]): PoolCount[] {
+  const out: PoolCount[] = [];
+  for (const season of ALL_SEASONS) {
+    // §3 composition reads from the eligible (active, in-season) set for the
+    // meal; breakfast and lunch share the same eligible set here since
+    // eligibility is season + active only (docs/engine.md §1).
+    const eligible = eligibleDishes({
+      library,
+      history: [],
+      season,
+      slot: { day: "Mon", meal: "Lunch" },
+    });
+
+    const pair = breakfastWeekdayPair(eligible);
+    const single = breakfastSinglePick(eligible);
+    const m1 = menu1(eligible, []);
+    const m2 = menu2(eligible, []);
+    const m3 = menu3(eligible);
+    const m4 = menu4(eligible);
+
+    const rows: Array<[string, number]> = [
+      ["Breakfast Option A: complete_meal", pair.optionA.completeMeal.length],
+      ["Breakfast Option A: fruit", pair.optionA.fruit.length],
+      ["Breakfast Option B: complete_carb", pair.optionB.completeCarb.length],
+      ["Breakfast Option B: accompaniment", pair.optionB.accompaniment.length],
+      ["Breakfast Option C: dry main", pair.optionC.dryMain.length],
+      ["Breakfast Option C: plain carb", pair.optionC.plainCarb.length],
+      ["Breakfast single (Tue/Thu)", single.pool.length],
+      ["Menu 1: HP", m1.hp.length],
+      ["Menu 1: partner when HP is Dry", m1.partnerWhenHpIsDry.length],
+      ["Menu 1: partner when HP is Gravy", m1.partnerWhenHpIsGravy.length],
+      ["Menu 2: Keto", m2.keto.length],
+      ["Menu 2: non-HP Gravy", m2.nonHpGravy.length],
+      ["Menu 2: non-HP Dry", m2.nonHpDry.length],
+      ["Menu 3: complete_meal + HP", m3.completeMealHp.length],
+      ["Menu 3: Accompaniment", m3.accompaniment.length],
+      ["Menu 3: Dessert", m3.dessert.length],
+      ["Menu 4: complete_meal non-HP", m4.completeMealNonHp.length],
+      ["Menu 4: Keto", m4.keto.length],
+      ["Menu 4: Accompaniment", m4.accompaniment.length],
+      ["Lunch carb (§3.1)", m1.lunchCarb.length],
+    ];
+    for (const [slot, count] of rows) {
+      out.push({ season, slot, count });
+    }
+  }
+  return out;
+}
+
+/** One dish whose computed protein disagrees with its HP tag. */
+export interface HpProteinDrift {
+  dishId: number;
+  dishName: string;
+  hasHpTag: boolean;
+  proteinPerPerson: number;
+  /** The high-protein threshold (g per person) the report compared against. */
+  threshold: number;
+}
+
+/**
+ * The HP threshold (grams of protein per person) the consistency report uses to
+ * call a dish "high-protein". Reporting-only: the HP TAG stays the rule input
+ * (docs/engine.md §3), this number only surfaces drift between the tag and the
+ * derived macro. Whether HP ever becomes derived from a threshold is a future
+ * slow-loop question (design-revamp §1.2), not this slice.
+ */
+export const HP_PROTEIN_THRESHOLD_PER_PERSON = 20;
+
+/**
+ * Warn when a dish's COMPUTED protein and its HP tag disagree: HP-tagged but
+ * below the threshold, or above the threshold without the tag. Dishes whose
+ * macros are not yet populated (derived protein zero because every ingredient's
+ * catalog macros are blank) are SKIPPED, so the report stays silent this slice
+ * (every macro cell is blank until 2.2) and only speaks once real macros exist.
+ */
+export function hpProteinConsistencyReport(
+  dishes: Dish[],
+  ingredients: Ingredient[],
+  catalog: CatalogIngredient[],
+): HpProteinDrift[] {
+  const rowsByDishId = new Map<number, Ingredient[]>();
+  for (const row of ingredients) {
+    const list = rowsByDishId.get(row.dishId);
+    if (list) list.push(row);
+    else rowsByDishId.set(row.dishId, [row]);
+  }
+
+  const drift: HpProteinDrift[] = [];
+  for (const dish of dishes) {
+    if (dish.active !== "Yes") continue;
+    const rows = rowsByDishId.get(dish.id) ?? [];
+    const { proteinPerPerson } = deriveDishMacros(rows, catalog);
+    // No macro data yet -> nothing to compare. This keeps the report empty
+    // until macros are populated (2.2), which is the intended pre-2.2 state.
+    if (proteinPerPerson === 0) continue;
+    const hasHpTag = dish.tags.includes("HP");
+    const isHighProtein = proteinPerPerson >= HP_PROTEIN_THRESHOLD_PER_PERSON;
+    if (hasHpTag !== isHighProtein) {
+      drift.push({
+        dishId: dish.id,
+        dishName: dish.name,
+        hasHpTag,
+        proteinPerPerson,
+        threshold: HP_PROTEIN_THRESHOLD_PER_PERSON,
+      });
+    }
+  }
+  return drift;
 }

@@ -203,7 +203,19 @@ export function parseDishFile(slug: string, markdown: string): DishFile {
     throw err;
   }
 
-  const tables = findTables(markdown.slice(fmMatch[0].length));
+  const body = markdown.slice(fmMatch[0].length);
+
+  // Body-prose conventions (design-revamp §1.1, slice 2.1):
+  //  - the first body paragraph, the prose before `## Ingredients`, is the
+  //    one-line `description`;
+  //  - a `## Recipe` section after `## Ingredients` holds numbered steps, one
+  //    per `recipe` entry.
+  // Both optional: a dish file with neither (every current file) yields neither
+  // and parses exactly as before. We attach them to the dish object below.
+  const description = parseDescription(body);
+  const recipe = parseRecipe(body);
+
+  const tables = findTables(body);
   if (tables.length === 0) {
     throw new Error(`parseDishFile(${slug}): no '## Ingredients' pipe table found`);
   }
@@ -243,7 +255,63 @@ export function parseDishFile(slug: string, markdown: string): DishFile {
     }
   }
 
-  return { slug, dish, ingredients };
+  const enrichedDish: Dish = {
+    ...dish,
+    ...(description !== undefined ? { description } : {}),
+    ...(recipe !== undefined ? { recipe } : {}),
+  };
+
+  return { slug, dish: enrichedDish, ingredients };
+}
+
+/**
+ * The one-line description: the first non-empty body paragraph that appears
+ * before the first `## ` section heading. A paragraph is the run of contiguous
+ * non-empty lines, joined with a single space (descriptions are one line today,
+ * but a wrapped paragraph collapses cleanly). Returns undefined when the body
+ * opens directly on a heading (every current dish file).
+ */
+function parseDescription(body: string): string | undefined {
+  const lines = body.split("\n");
+  const para: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("## ")) break;
+    if (trimmed.length === 0) {
+      if (para.length > 0) break;
+      continue;
+    }
+    para.push(trimmed);
+  }
+  if (para.length === 0) return undefined;
+  return para.join(" ");
+}
+
+/**
+ * Numbered recipe steps from a `## Recipe` section. Each step is a line of the
+ * form `N. step text`; the leading `N. ` marker is stripped. A wrapped step
+ * (continuation lines without a new marker) joins onto the current step with a
+ * single space. Returns undefined when no `## Recipe` section is present.
+ */
+function parseRecipe(body: string): string[] | undefined {
+  const lines = body.split("\n");
+  let i = 0;
+  while (i < lines.length && lines[i].trim() !== "## Recipe") i += 1;
+  if (i >= lines.length) return undefined;
+  i += 1;
+  const steps: string[] = [];
+  for (; i < lines.length; i += 1) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("## ")) break;
+    if (trimmed.length === 0) continue;
+    const marker = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (marker) {
+      steps.push(marker[2].trim());
+    } else if (steps.length > 0) {
+      steps[steps.length - 1] = `${steps[steps.length - 1]} ${trimmed}`;
+    }
+  }
+  return steps.length > 0 ? steps : undefined;
 }
 
 /**
@@ -273,11 +341,23 @@ export function dishFilesToLibrary(files: DishFile[]): {
   return { dishes, ingredients };
 }
 
-const CATALOG_HEADERS = ["Ingredient", "Group", "Unit", "Pack Size"];
+const CATALOG_HEADERS = [
+  "Ingredient",
+  "Group",
+  "Unit",
+  "Pack Size",
+  "Grams per piece",
+  "Protein /100g",
+  "Carbs /100g",
+];
 
 /**
  * Parse the ingredient catalog (data/ingredients.md). One row per canonical
- * ingredient; a blank Pack Size cell marks an untracked ingredient.
+ * ingredient; a blank Pack Size cell marks an untracked ingredient. The three
+ * macro columns (Grams per piece, Protein /100g, Carbs /100g, design-revamp
+ * §1.1) are schema-present from slice 2.1; every cell ships blank this slice and
+ * a blank cell reads as absent (undefined), which nutrition derivation treats as
+ * zero.
  */
 export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
   const tables = findTables(markdown);
@@ -300,6 +380,12 @@ export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
     }
     const rowKey = `catalog row ingredient="${cells[0]}"`;
     const packSize = cells[3].length > 0 ? cells[3] : undefined;
+    const gramsPerPiece =
+      cells[4].length > 0 ? parseNumberStrict(cells[4], "Grams per piece", rowKey) : undefined;
+    const proteinPer100g =
+      cells[5].length > 0 ? parseNumberStrict(cells[5], "Protein /100g", rowKey) : undefined;
+    const carbsPer100g =
+      cells[6].length > 0 ? parseNumberStrict(cells[6], "Carbs /100g", rowKey) : undefined;
     try {
       out.push(
         CatalogIngredientSchema.parse({
@@ -307,6 +393,9 @@ export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
           group: cells[1],
           unit: cells[2],
           ...(packSize !== undefined ? { packSize } : {}),
+          ...(gramsPerPiece !== undefined ? { gramsPerPiece } : {}),
+          ...(proteinPer100g !== undefined ? { proteinPer100g } : {}),
+          ...(carbsPer100g !== undefined ? { carbsPer100g } : {}),
         }),
       );
     } catch (err) {
