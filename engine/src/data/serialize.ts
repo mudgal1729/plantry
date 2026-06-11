@@ -115,15 +115,40 @@ export function serializeDishFile(file: DishFile): string {
   fm.push(`satiety: ${dish.satiety}`);
   fm.push(`prepMinutes: ${dish.prepMinutes}`);
   fm.push(`seasons: ${frontmatterSeasons(dish.seasons)}`);
+  // Enrichment frontmatter (design-revamp §1.1, slice 2.1). Emitted in a fixed
+  // order, each line only when the field is present, so a dish with none of them
+  // (every current file) serializes byte-identically to before.
+  if (dish.complexity !== undefined) fm.push(`complexity: ${dish.complexity}`);
+  if (dish.skill !== undefined) fm.push(`skill: ${dish.skill}`);
+  if (dish.equipment !== undefined) fm.push(`equipment: ${dish.equipment}`);
+  if (dish.buySpecially !== undefined) fm.push(`buySpecially: ${dish.buySpecially}`);
+  if (dish.prePrep !== undefined) fm.push(`prePrep: ${dish.prePrep}`);
+  if (dish.photo !== undefined) fm.push(`photo: ${dish.photo}`);
   fm.push("---");
 
+  // Body: an optional description paragraph, the `## Ingredients` table, then an
+  // optional `## Recipe` section. description and recipe live in the body prose,
+  // not frontmatter (design-revamp §1.1). A dish with neither produces the same
+  // bytes as before.
   const body: string[] = [];
+  if (dish.description !== undefined) {
+    body.push(dish.description);
+    body.push("");
+  }
   body.push("## Ingredients");
   body.push("");
   body.push(headerLine(DISH_INGREDIENT_HEADERS));
   body.push(dividerLine(DISH_INGREDIENT_HEADERS));
   for (const row of ingredients) {
     body.push(bodyLine([row.ingredient, formatQuantity(row.quantity), row.unit]));
+  }
+  if (dish.recipe !== undefined) {
+    body.push("");
+    body.push("## Recipe");
+    body.push("");
+    dish.recipe.forEach((step, idx) => {
+      body.push(`${idx + 1}. ${step}`);
+    });
   }
 
   return fm.join("\n") + "\n\n" + body.join("\n") + "\n";
@@ -148,6 +173,13 @@ const CATALOG_PREAMBLE = [
   "rounded up to whole packs on the buy list); blank marks an untracked staple",
   "bought by weight.",
   "",
+  "`Grams per piece` applies only to `pcs`-unit ingredients (an egg is about",
+  "50 g) so macro derivation can convert pieces to grams; blank on every other",
+  "row. `Protein /100g` and `Carbs /100g` power derived dish macros (engine.md",
+  "Nutrition section); a blank cell reads as zero. These three columns are",
+  "schema-present from slice 2.1 and populated in slice 2.2; until then every",
+  "macro cell is blank, which the coverage report expects.",
+  "",
   "Grouping judgment calls (institutional memory; do not silently re-bucket):",
   "",
   "- Onion and Tomato: Aromatics and Herbs. Both are the base of nearly every",
@@ -167,14 +199,38 @@ const CATALOG_PREAMBLE = [
   "",
 ].join("\n");
 
-const CATALOG_HEADERS = ["Ingredient", "Group", "Unit", "Pack Size"];
+const CATALOG_HEADERS = [
+  "Ingredient",
+  "Group",
+  "Unit",
+  "Pack Size",
+  "Grams per piece",
+  "Protein /100g",
+  "Carbs /100g",
+];
+
+/** A macro/grams-per-piece cell: blank when absent, else the bare number. */
+function macroCell(value: number | undefined): string {
+  if (value === undefined) return "";
+  return String(value);
+}
 
 export function serializeIngredientCatalog(catalog: CatalogIngredient[]): string {
   const lines: string[] = [];
   lines.push(headerLine(CATALOG_HEADERS));
   lines.push(dividerLine(CATALOG_HEADERS));
   for (const row of catalog) {
-    lines.push(bodyLine([row.ingredient, row.group, row.unit, row.packSize ?? ""]));
+    lines.push(
+      bodyLine([
+        row.ingredient,
+        row.group,
+        row.unit,
+        row.packSize ?? "",
+        macroCell(row.gramsPerPiece),
+        macroCell(row.proteinPer100g),
+        macroCell(row.carbsPer100g),
+      ]),
+    );
   }
   return CATALOG_PREAMBLE + lines.join("\n") + "\n";
 }

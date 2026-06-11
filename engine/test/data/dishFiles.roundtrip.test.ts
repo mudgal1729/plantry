@@ -51,6 +51,105 @@ describe("per-dish file round-trip", () => {
     expect(serializeDishFile(parsed)).toBe(original);
   });
 
+  it("round-trips a fully enriched dish file byte-identical", () => {
+    // A synthetic file exercising every enrichment field + body convention:
+    // optional frontmatter (complexity/skill/equipment/buySpecially/prePrep/
+    // photo), a description paragraph, and a numbered ## Recipe section.
+    const original = [
+      "---",
+      "id: 999",
+      "name: Test enriched dish",
+      "category: Gravy dish",
+      "time: Lunch",
+      "tags: [HP]",
+      "primaryIngredient: Chicken",
+      "preferred: Yes",
+      "active: Yes",
+      "satiety: High",
+      "prepMinutes: 40",
+      "seasons: All",
+      "complexity: Medium",
+      "skill: Comfortable, browning matters",
+      "equipment: Heavy kadhai",
+      "buySpecially: Curry cut chicken, 600g",
+      "prePrep: Marinate chicken overnight",
+      "photo: test-enriched-dish.jpg",
+      "---",
+      "",
+      "Everyday curry built on slow browned onions.",
+      "",
+      "## Ingredients",
+      "",
+      "| Ingredient | Quantity | Unit |",
+      "|------------|----------|------|",
+      "| Chicken | 300 | g |",
+      "",
+      "## Recipe",
+      "",
+      "1. Brown onions slowly, add ginger garlic paste.",
+      "2. Add tomato and spices, cook till oil separates.",
+      "3. Add chicken, simmer covered 25 minutes.",
+      "",
+    ].join("\n");
+    const parsed = parseDishFile("test-enriched-dish", original);
+    expect(parsed.dish.complexity).toBe("Medium");
+    expect(parsed.dish.skill).toBe("Comfortable, browning matters");
+    expect(parsed.dish.equipment).toBe("Heavy kadhai");
+    expect(parsed.dish.buySpecially).toBe("Curry cut chicken, 600g");
+    expect(parsed.dish.prePrep).toBe("Marinate chicken overnight");
+    expect(parsed.dish.photo).toBe("test-enriched-dish.jpg");
+    expect(parsed.dish.description).toBe("Everyday curry built on slow browned onions.");
+    expect(parsed.dish.recipe).toEqual([
+      "Brown onions slowly, add ginger garlic paste.",
+      "Add tomato and spices, cook till oil separates.",
+      "Add chicken, simmer covered 25 minutes.",
+    ]);
+    expect(serializeDishFile(parsed)).toBe(original);
+  });
+
+  it("round-trips a description-only dish (no recipe, no enrichment frontmatter)", () => {
+    const original = [
+      "---",
+      "id: 998",
+      "name: Desc only",
+      "category: Dry dish",
+      "time: Lunch",
+      "tags: []",
+      "primaryIngredient: Potato",
+      "preferred: No",
+      "active: Yes",
+      "satiety: Low",
+      "prepMinutes: 20",
+      "seasons: All",
+      "---",
+      "",
+      "A simple everyday dry dish.",
+      "",
+      "## Ingredients",
+      "",
+      "| Ingredient | Quantity | Unit |",
+      "|------------|----------|------|",
+      "| Potato | 150 | g |",
+      "",
+    ].join("\n");
+    const parsed = parseDishFile("desc-only", original);
+    expect(parsed.dish.description).toBe("A simple everyday dry dish.");
+    expect(parsed.dish.recipe).toBeUndefined();
+    expect(parsed.dish.complexity).toBeUndefined();
+    expect(serializeDishFile(parsed)).toBe(original);
+  });
+
+  it("a bare dish file (no enrichment) parses with all enrichment fields absent", () => {
+    const original = readFileSync(resolve(dishesDir, "aloo-beans.md"), "utf8");
+    const parsed = parseDishFile("aloo-beans", original);
+    expect(parsed.dish.description).toBeUndefined();
+    expect(parsed.dish.recipe).toBeUndefined();
+    expect(parsed.dish.complexity).toBeUndefined();
+    expect(parsed.dish.skill).toBeUndefined();
+    expect(parsed.dish.photo).toBeUndefined();
+    expect(serializeDishFile(parsed)).toBe(original);
+  });
+
   it("throws a slug-named error on invalid frontmatter", () => {
     const malformed = [
       "---",
@@ -98,13 +197,46 @@ describe("ingredient catalog round-trip", () => {
     expect(onion!.packSize).toBeUndefined();
   });
 
+  it("parses and re-emits populated macro columns (incl. pcs Grams per piece)", () => {
+    // Proves the three macro columns parse when non-blank and serialize back to
+    // the same cells, including a pcs-unit row with Grams per piece and a
+    // fractional macro. (Live data ships all blank until slice 2.2. The
+    // serializer always prepends the catalog preamble, so we compare the table
+    // rows rather than the whole file here.)
+    const input = [
+      "# Ingredient Catalog",
+      "",
+      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |",
+      "|------------|-------|------|-----------|-----------------|---------------|-------------|",
+      "| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 |",
+      "| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |",
+      "| Onion | Aromatics and Herbs | g | | | | |",
+      "",
+    ].join("\n");
+    const catalog = parseIngredientCatalog(input);
+    const egg = catalog.find((c) => c.ingredient === "Egg")!;
+    expect(egg.gramsPerPiece).toBe(50);
+    expect(egg.proteinPer100g).toBe(13);
+    expect(egg.carbsPer100g).toBe(1.1);
+    const onion = catalog.find((c) => c.ingredient === "Onion")!;
+    expect(onion.gramsPerPiece).toBeUndefined();
+    expect(onion.proteinPer100g).toBeUndefined();
+
+    const out = serializeIngredientCatalog(catalog);
+    expect(out).toContain("| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 |");
+    expect(out).toContain("| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |");
+    expect(out).toContain("| Onion | Aromatics and Herbs | g | | | | |");
+    // And a re-parse of the serialized output is stable (idempotent).
+    expect(serializeIngredientCatalog(parseIngredientCatalog(out))).toBe(out);
+  });
+
   it("throws a row-named error on an invalid group", () => {
     const malformed = [
       "# Ingredient Catalog",
       "",
-      "| Ingredient | Group | Unit | Pack Size |",
-      "|------------|-------|------|-----------|",
-      "| Paneer | Not A Group | g | 200 g |",
+      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |",
+      "|------------|-------|------|-----------|-----------------|---------------|-------------|",
+      "| Paneer | Not A Group | g | 200 g | | | |",
       "",
     ].join("\n");
     expect(() => parseIngredientCatalog(malformed)).toThrow(/Paneer/);

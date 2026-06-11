@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "bake": "npm run bake --workspace @plantry/engine",
+    "reports": "npm run reports --workspace @plantry/engine",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
