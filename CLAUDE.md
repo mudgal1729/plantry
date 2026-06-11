@@ -28,7 +28,7 @@ Read order by task:
 
 ## Currently building
 
-> _none_
+> design-revamp — `features/design-revamp.md`. Implementing the June 2026 design handoff: per-dish data files + ingredient catalog, new engine rules (picker ranking, requests, skips, explore), Convex extensions, full PWA rebuild, share image family, library enrichment and expansion.
 
 When no feature is active, this line reads "_none_".
 

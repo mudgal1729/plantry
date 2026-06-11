@@ -142,7 +142,7 @@ If a rewrite needs any of these to make sense, the job is doing it wrong. The do
 
 The reconciliation job also runs mechanical checks against `docs/engineering.md` §14:
 
-- Root inventory: every entry at root must be one of: `.gitignore`, `CLAUDE.md`, `MAINTENANCE.md`, `DECISIONS.md`, `.git`, `.claude`, `.github`, `docs/`, `data/`, `features/`, `engine/`, `app/`, `archive/`.
+- Root inventory: every entry at root must be one of these. Files: `.gitignore`, `.githooks/`, `.maintenance-state`, `.prettierignore`, `.prettierrc`, `CLAUDE.md`, `DECISIONS.md`, `MAINTENANCE.md`, `claude-design.md`, `eslint.config.js`, `package.json`, `package-lock.json`, `tsconfig.json`, `tsconfig.base.json`, `vercel.json`. Directories: `.claude/`, `.github/`, `app/`, `archive/`, `data/`, `design_handoff/`, `docs/`, `engine/`, `features/`, `scripts/`. Gitignored entries the check tolerates: `.git`, `.vercel`, `node_modules`.
 - Empty-but-anticipated directories carry `.gitkeep`.
 - Folder naming follows the conventions in `docs/engineering.md` §14.
 

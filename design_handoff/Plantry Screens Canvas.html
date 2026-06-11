@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plantry, all screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="hifi-data.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="hifi-tokens.jsx"></script>
+<script type="text/babel" src="hifi-primitives.jsx"></script>
+<script type="text/babel" src="hifi-screens.jsx"></script>
+<script type="text/babel" src="hifi-overlays.jsx"></script>
+<script type="text/babel" src="hifi-share-image.jsx"></script>
+<script type="text/babel">
+const W = 393, H = 852;
+const noop = () => {};
+const DATA = window.PlantryData;
+window.PlantryAppWeek = DATA.WEEK;
+const wed = DATA.WEEK[2];
+
+// Week variant with two recipes marked for sharing.
+const weekWithRecipes = JSON.parse(JSON.stringify(DATA.WEEK));
+weekWithRecipes[1].lunch[0].includeRecipe = true; // chicken curry
+weekWithRecipes[2].lunch[0].includeRecipe = true; // palak paneer
+
+// Week variant with Saturday skipped.
+const weekWithSkip = JSON.parse(JSON.stringify(DATA.WEEK));
+weekWithSkip[5].skipped = { reason: 'Eating out with friends' };
+const skippedSat = weekWithSkip[5];
+
+function Frame({ children, screen }) {
+  return (
+    <div style={{ width: W, height: H, position: 'relative', overflow: 'hidden', background: '#F7F2E9' }}>
+      {screen}
+      {children}
+    </div>
+  );
+}
+
+function App() {
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const menuScreen = (
+    <window.MenuScreen week={DATA.WEEK} activity={DATA.ACTIVITY} identity="Rajat" onTab={noop} onShare={noop} onOpenDay={noop} onSwitchIdentity={noop} />
+  );
+  const dayScreen = (
+    <window.DayScreen day={wed} onBack={noop} onTab={noop} onDishMenu={noop} onDishDetails={noop} onAddDish={noop} onSkipDay={noop} onRestoreDay={noop} />
+  );
+  const exploreScreen = <window.ExploreScreen history={[]} onOpenDish={noop} onTab={noop} />;
+  return (
+    <DesignCanvas title="Plantry, all screens">
+      <DCSection id="entry" title="Entry" subtitle="First run only; both stay stored on the phone.">
+        <DCArtboard id="gate" label="Passcode gate" width={W} height={H}><window.GateScreen onUnlock={noop} /></DCArtboard>
+        <DCArtboard id="identity" label="Identity picker" width={W} height={H}><window.IdentityScreen onPick={noop} /></DCArtboard>
+      </DCSection>
+      <DCSection id="menu" title="Menu" subtitle="The shared week. Each day card carries its own Edit button; the summary line under the title links to Changes.">
+        <DCArtboard id="menu-week" label="Menu, changes by both" width={W} height={H}>{menuScreen}</DCArtboard>
+        <DCArtboard id="menu-one-change" label="Menu, one change" width={W} height={H}>
+          <window.MenuScreen week={DATA.WEEK} activity={DATA.ACTIVITY.slice(0, 1)} identity="Rajat" onTab={noop} onShare={noop} onOpenDay={noop} onSwitchIdentity={noop} />
+        </DCArtboard>
+        <DCArtboard id="menu-no-changes" label="Menu, no changes" width={W} height={H}>
+          <window.MenuScreen week={DATA.WEEK} activity={[]} identity="Rajat" onTab={noop} onShare={noop} onOpenDay={noop} onSwitchIdentity={noop} />
+        </DCArtboard>
+        <DCArtboard id="day" label="A day, opened from its card" width={W} height={H}>{dayScreen}</DCArtboard>
+        <DCArtboard id="menu-skipped" label="Menu, a skipped day" width={W} height={H}>
+          <window.MenuScreen week={weekWithSkip.slice(3)} activity={[{ who: 'Tuhina', text: 'Skipped Saturday', when: '1h ago', reason: 'Eating out with friends' }]} identity="Rajat" onTab={noop} onShare={noop} onOpenDay={noop} onSwitchIdentity={noop} />
+        </DCArtboard>
+        <DCArtboard id="day-skipped" label="A skipped day" width={W} height={H}>
+          <window.DayScreen day={skippedSat} onBack={noop} onTab={noop} onDishMenu={noop} onDishDetails={noop} onAddDish={noop} onSkipDay={noop} onRestoreDay={noop} />
+        </DCArtboard>
+        <DCArtboard id="share-preview" label="Share preview, menu with two recipes" width={W} height={H}>
+          <Frame screen={menuScreen}>
+            <window.SharePreviewSheet week={weekWithRecipes} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="edit" title="Editing a dish" subtitle="Polish happens at day level or dish level, never a whole meal block. Comments attach to a dish.">
+        <DCArtboard id="dish-actions" label="Dish actions, from the ⋯ button" width={W} height={H}>
+          <Frame screen={dayScreen}><window.DishActionSheet entry={{ key: 'palakPaneer' }} onReplace={noop} onDetails={noop} onDelete={noop} onClose={noop} /></Frame>
+        </DCArtboard>
+        <DCArtboard id="dish-details" label="Details and recipe, opens from a dish row" width={W} height={H}>
+          <Frame screen={dayScreen}>
+            <window.DishDetailSheet dishKey="rajma" context="week" defaultOpen includeRecipe onToggleRecipe={noop} onReplace={noop} onDelete={noop} onComment={noop} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+        <DCArtboard id="swap-picker" label="Replace, ranked picker" width={W} height={H}>
+          <Frame screen={dayScreen}>
+            <window.SwapPickerSheet dayId="wed" meal="lunch" outgoingKey="palakPaneer" onPick={noop} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+        <DCArtboard id="reason" label="Required reason" width={W} height={H}>
+          <Frame screen={dayScreen}><window.ReasonDialog title="Why this swap?" submitLabel="Swap it in" onSubmit={noop} onClose={noop} /></Frame>
+        </DCArtboard>
+        <DCArtboard id="add-dish" label="Add a dish, search or one off" width={W} height={H}>
+          <Frame screen={dayScreen}><window.AddDishSheet dayId="wed" onPickLibrary={noop} onPickCustom={noop} onClose={noop} /></Frame>
+        </DCArtboard>
+        <DCArtboard id="comments" label="Comments on a dish" width={W} height={H}>
+          <Frame screen={dayScreen}>
+            <window.CommentSheet dayId="wed" dishLabel="Palak paneer" identity="Rajat" comments={[{ dayId: 'wed', who: 'Tuhina', when: 'Yesterday', text: 'Palak paneer: less cream than last time please' }]} onSubmit={noop} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="lists" title="Grocery and Changes" subtitle="Grocery is the order list for the week. Changes is the record of every fast loop action, with reasons.">
+        <DCArtboard id="grocery" label="Grocery" width={W} height={H}><window.GroceryScreen onTab={noop} /></DCArtboard>
+        <DCArtboard id="changes" label="Changes" width={W} height={H}>
+          <window.ChangesScreen activity={[{ who: 'Rajat', text: 'Added Kadhai paneer to Wednesday', when: 'Just now', reason: 'Craving it' }, ...DATA.ACTIVITY]} onTab={noop} />
+        </DCArtboard>
+        <DCArtboard id="changes-empty" label="Changes, none yet" width={W} height={H}><window.ChangesScreen activity={[]} onTab={noop} /></DCArtboard>
+      </DCSection>
+      <DCSection id="explore" title="Explore" subtitle="Dishes never cooked, ranked familiar-but-new. Details open with description and recipe visible.">
+        <DCArtboard id="explore-grid" label="Explore" width={W} height={H}>{exploreScreen}</DCArtboard>
+        <DCArtboard id="explore-details" label="Dish from Explore, this week or next" width={W} height={H}>
+          <Frame screen={exploreScreen}>
+            <window.DishDetailSheet dishKey="kadhaiPaneer" context="explore" onUse={noop} onUseNextWeek={noop} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+        <DCArtboard id="day-picker" label="Pick a day" width={W} height={H}>
+          <Frame screen={exploreScreen}>
+            <window.DayPickerSheet dishKey="kadhaiPaneer" onPick={noop} onClose={noop} />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="share-images" title="Shareable images" subtitle="The WhatsApp output family: menu, groceries, then one sheet per included recipe.">
+        <DCArtboard id="img-menu" label="Menu image" width={360} height={800}><window.MenuShareImage week={DATA.WEEK} /></DCArtboard>
+        <DCArtboard id="img-grocery" label="Grocery image" width={360} height={830}><window.GroceryShareImage /></DCArtboard>
+        <DCArtboard id="img-recipe-1" label="Recipe sheet 1" width={360} height={520}><window.RecipeShareImage dishKey="chickenCurry" /></DCArtboard>
+        <DCArtboard id="img-recipe-2" label="Recipe sheet 2" width={360} height={520}><window.RecipeShareImage dishKey="palakPaneer" /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

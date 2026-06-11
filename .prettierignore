@@ -3,4 +3,5 @@ node_modules/
 .convex/
 coverage/
 data/menu_images/
+design_handoff/
 package-lock.json

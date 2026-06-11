@@ -223,11 +223,24 @@ plantry/
   CLAUDE.md            # orientation
   MAINTENANCE.md       # slow loop spec
   DECISIONS.md         # EM autonomy log
+  claude-design.md     # design contract (lowercase by convention from the file itself)
   .gitignore
+  .githooks/           # pre-commit hook (blocks commits from the main directory)
+  .maintenance-state   # last-reconcile marker for the maintenance job
+  .prettierrc          # formatter config
+  .prettierignore      # formatter ignore list
+  eslint.config.js     # lint config
+  tsconfig.json        # root TS project config
+  tsconfig.base.json   # shared TS compiler options
+  package.json         # workspace root manifest
+  package-lock.json    # locked dependency tree
+  vercel.json          # hosting config
   .github/workflows/
   .claude/commands/    # /slow-loop, /new-stream
+  scripts/             # build and bake scripts
   docs/                # canonical specs + CHANGELOG
   data/                # human-edited library, history, structural changelog, menu images
+  design_handoff/      # the design handoff (contract, screens, primitives, tokens)
   features/            # active feature spec (one at a time)
   engine/              # TS engine module
   app/convex/          # Convex schema + functions
@@ -235,12 +248,14 @@ plantry/
   archive/             # history (handoffs, retired docs, shipped feature specs)
 ```
 
+Gitignored entries the structure check tolerates but the tree omits: `.git`, `.vercel`, `node_modules`.
+
 Naming:
 - Folder names under `archive/`, `docs/`, `features/`, `app/web/src/components/`: kebab-case.
 - TypeScript component files: PascalCase.
 - TypeScript non-component files: camelCase.
 - Markdown files in `docs/`: lowercase single-word names.
-- Markdown files at root: UPPERCASE.
+- Markdown files at root: UPPERCASE, with one named exception: `claude-design.md` is lowercase by convention from the design contract itself.
 
 ## 15. CI gates
 

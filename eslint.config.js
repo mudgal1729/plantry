@@ -14,6 +14,7 @@ export default [
       "**/coverage/**",
       "**/*.config.js",
       "**/*.config.ts",
+      "design_handoff/**",
     ],
   },
   js.configs.recommended,
