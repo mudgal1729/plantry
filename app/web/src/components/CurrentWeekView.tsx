@@ -205,15 +205,15 @@ function WeekBody({
         <h2 className="week__title">Week of {week.weekStart}</h2>
         <span className={`week__status week__status--${week.status}`}>{week.status}</span>
       </div>
-      <ol className="week__days">
+      <ol className="legacy-week__days">
         {grouped.map((bucket) => {
           const dayCommentKey = `day-${bucket.day}`;
           const dayComposerOpen = composingFor === dayCommentKey;
           const dayCount = commentCounts.dayCounts.get(bucket.day) ?? 0;
           return (
-            <li key={bucket.day} className="day-card">
-              <div className="day-card__head">
-                <h3 className="day-card__title">{dayLabel(bucket.day)}</h3>
+            <li key={bucket.day} className="legacy-day-card">
+              <div className="legacy-day-card__head">
+                <h3 className="legacy-day-card__title">{dayLabel(bucket.day)}</h3>
                 {interactive && (
                   <button
                     type="button"

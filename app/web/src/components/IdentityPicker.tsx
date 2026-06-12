@@ -1,30 +1,40 @@
 import type { Identity } from "../lib/types.js";
+import { Avatar } from "./primitives.js";
 
 interface IdentityPickerProps {
   onPick: (identity: Identity) => void;
 }
 
-// Slice 1 stores the pick in localStorage only. A later Stream D or Stream F
-// slice will mirror this into Convex's userProfiles table when the
-// setUserProfile mutation lands; do not add that call here.
+const PEOPLE: { id: Identity; name: string }[] = [
+  { id: "rajat", name: "Rajat" },
+  { id: "tuhina", name: "Tuhina" },
+];
+
+// Restyled to the handoff IdentityScreen. Behaviour is unchanged: picking writes
+// the identity to localStorage (and mirrors it to Convex) in App.tsx; this
+// component only reports the choice.
 export function IdentityPicker({ onPick }: IdentityPickerProps) {
   return (
-    <div className="splash">
-      <div className="splash__card">
-        <h1 className="splash__title">Who is this phone for?</h1>
-        <p className="splash__hint">Pick once. Your edits will be tagged with this name.</p>
-        <div className="identity-picker">
-          <button type="button" className="identity-picker__button" onClick={() => onPick("rajat")}>
-            I am Rajat
-          </button>
-          <button
-            type="button"
-            className="identity-picker__button"
-            onClick={() => onPick("tuhina")}
-          >
-            I am Tuhina
-          </button>
+    <div className="screen">
+      <div className="identity">
+        <div className="identity__head">
+          <div className="identity__title">Who is this phone?</div>
+          <div className="identity__hint">Edits and comments carry your name</div>
         </div>
+        {PEOPLE.map((person) => (
+          <button
+            key={person.id}
+            type="button"
+            className="identity__option"
+            onClick={() => onPick(person.id)}
+          >
+            <Avatar who={person.id} size={44} />
+            <div className="identity__option-text">
+              <div className="identity__option-name">I am {person.name}</div>
+              <div className="identity__option-sub">Stored on this phone only</div>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );

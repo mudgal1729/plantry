@@ -12,8 +12,8 @@ export default defineConfig({
         name: "Plantry",
         short_name: "Plantry",
         description: "Weekly meal planner for the Mudgal household.",
-        theme_color: "#2f5d3a",
-        background_color: "#fefcf6",
+        theme_color: "#bc5430",
+        background_color: "#f7f2e9",
         display: "standalone",
         start_url: "/",
         icons: [
