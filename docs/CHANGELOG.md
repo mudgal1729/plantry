@@ -12,6 +12,10 @@ Brief description in present tense, one to three sentences. Reference the PR.
 
 ---
 
+## 2026-06-12  Slice B1.3: enrichment batch 3 (30 dishes) — recipe coverage complete
+
+The third and final enrichment batch (`data/enrichment-3`, Rajat-reviewed for taste) enriches the last 30 dishes end to end (one-line description, a 3-to-5-step `## Recipe`, `complexity`, and the optional cook fields where they apply). With this batch every dish in the library now carries a description and recipe: per-dish enrichment coverage reaches 100% of active dishes. Macros, tags, ingredient rows, catalog, engine.md, and the engine tests are untouched. This closes the B1 enrichment track (#38, #40, #41). (#41)
+
 ## 2026-06-12  Slice B1.2: enrichment batch 2 (31 dishes) + synthetic round-trip fixture
 
 The second enrichment batch (`data/enrichment-2`, Rajat-reviewed for taste) enriches 31 more dishes end to end (one-line description, a 3-to-5-step `## Recipe`, `complexity`, and the optional cook fields where they apply), drawn from the dishes still lacking a `## Recipe`, with no overlap with prior batches. Per-dish enrichment coverage moves to 88 of 118 active dishes; macros, tags, ingredient rows, catalog, and `docs/engine.md` are untouched. Also converts the round-trip test's bare-dish fixture (`engine/test/data/dishFiles.roundtrip.test.ts`) from a real file (`lauki-sabzi`, now enriched) to a synthetic in-memory bare DishFile, so the test no longer depends on any real dish staying un-enriched; the "all live files round-trip byte-identical" case is unchanged. This permanently ends the per-batch fixture churn. (#40)
