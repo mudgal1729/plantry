@@ -36,9 +36,10 @@ export const HOUSEHOLD_SERVINGS = 2;
 
 /**
  * Convert one ingredient row's quantity to grams. `g` is already grams; `pcs`
- * multiplies by the catalog's grams-per-piece (zero when absent); `ml` is not a
- * mass and contributes no macro grams today (no liquid ingredient carries
- * macros in the catalog), so it returns zero.
+ * multiplies by the catalog's grams-per-piece (zero when absent); `ml` converts
+ * to grams 1:1, assuming a culinary liquid density of about 1.0 (milk ~1.03,
+ * coconut milk ~0.97, both within noise for a display macro). No per-ingredient
+ * density column exists (Principle 8): no column until a dish needs one.
  */
 function rowGrams(row: Ingredient, catalogEntry: CatalogIngredient | undefined): number {
   if (row.unit === "g") return row.quantity;
@@ -46,7 +47,7 @@ function rowGrams(row: Ingredient, catalogEntry: CatalogIngredient | undefined):
     const gramsPerPiece = catalogEntry?.gramsPerPiece ?? 0;
     return row.quantity * gramsPerPiece;
   }
-  return 0;
+  return row.quantity;
 }
 
 /**

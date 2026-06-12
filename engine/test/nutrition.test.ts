@@ -64,6 +64,39 @@ describe("deriveDishMacros", () => {
     expect(macros.carbsPerPerson).toBeCloseTo(0.5, 10);
   });
 
+  it("converts ml ingredients to grams 1:1 and composes with g and pcs rows", () => {
+    const catalog: CatalogIngredient[] = [
+      {
+        ingredient: "Milk",
+        group: "Proteins and Dairy",
+        unit: "ml",
+        proteinPer100g: 3.4,
+        carbsPer100g: 5,
+      },
+      { ingredient: "Rice", group: "Pantry", unit: "g", proteinPer100g: 7, carbsPer100g: 78 },
+      {
+        ingredient: "Egg",
+        group: "Proteins and Dairy",
+        unit: "pcs",
+        gramsPerPiece: 50,
+        proteinPer100g: 13,
+        carbsPer100g: 1,
+      },
+    ];
+    // 200 ml milk -> 200 g (1:1) -> protein 6.8, carbs 10 (dish total).
+    const milkOnly = deriveDishMacros([ing("Milk", 200, "ml")], catalog);
+    expect(milkOnly.proteinPerPerson).toBeCloseTo((200 * 3.4) / 100 / 2, 10);
+    expect(milkOnly.carbsPerPerson).toBeCloseTo((200 * 5) / 100 / 2, 10);
+
+    // ml composes with g and pcs: milk 200 ml + rice 100 g + egg 2 pcs (100 g).
+    const rows = [ing("Milk", 200, "ml"), ing("Rice", 100, "g"), ing("Egg", 2, "pcs")];
+    const macros = deriveDishMacros(rows, catalog);
+    // Dish total protein = 200*3.4/100 + 100*7/100 + 100*13/100 = 6.8 + 7 + 13 = 26.8.
+    expect(macros.proteinPerPerson).toBeCloseTo(26.8 / 2, 10);
+    // Dish total carbs = 200*5/100 + 100*78/100 + 100*1/100 = 10 + 78 + 1 = 89.
+    expect(macros.carbsPerPerson).toBeCloseTo(89 / 2, 10);
+  });
+
   it("treats a pcs ingredient with no Grams per piece as zero contribution", () => {
     const catalog: CatalogIngredient[] = [
       // Macros present but no gramsPerPiece: cannot weigh, contributes nothing.
