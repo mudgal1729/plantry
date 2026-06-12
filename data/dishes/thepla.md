@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 25
 seasons: All
+complexity: Medium
 ---
+
+Soft Gujarati flatbreads kneaded with fenugreek, curd and spices.
 
 ## Ingredients
 
@@ -21,3 +24,10 @@ seasons: All
 | Ginger | 10 | g |
 | Green Chilli | 2 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Mix wheat flour with chopped fenugreek, ginger, green chilli, turmeric and salt.
+2. Knead a soft dough with curd and a little oil, rest 10 minutes.
+3. Roll out thin rounds and cook on a hot tawa with oil.
+4. Press lightly so each thepla cooks through and lightly browns.

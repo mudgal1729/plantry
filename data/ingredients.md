@@ -32,62 +32,62 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
   visible without forcing a wrong category.
 | Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |
 |------------|-------|------|-----------|-----------------|---------------|-------------|
-| Bhindi | Vegetables | g | | | | |
-| Bitter Gourd | Vegetables | g | | | | |
-| Black Urad Dal | Pantry | g | | | | |
-| Bottle Gourd | Vegetables | g | | | | |
-| Bread | Pantry | pcs | | | | |
-| Broccoli | Vegetables | g | | | | |
-| Cabbage | Vegetables | g | | | | |
-| Capsicum | Vegetables | g | | | | |
-| Carrot | Vegetables | g | | | | |
-| Cashew | Pantry | g | | | | |
-| Cauliflower | Vegetables | g | | | | |
-| Chana Dal | Pantry | g | | | | |
-| Cheese | Proteins and Dairy | g | | | | |
-| Chicken | Proteins and Dairy | g | | | | |
-| Chicken Breast | Proteins and Dairy | g | 250 g | | | |
-| Chicken Keema | Proteins and Dairy | g | 500 g | | | |
-| Chickpea | Pantry | g | | | | |
-| Coconut Milk | Pantry | ml | | | | |
+| Bhindi | Vegetables | g | | | 1.9 | 7 |
+| Bitter Gourd | Vegetables | g | | | 1 | 4 |
+| Black Urad Dal | Pantry | g | | | 25 | 59 |
+| Bottle Gourd | Vegetables | g | | | 0.6 | 4 |
+| Bread | Pantry | pcs | | 30 | 9 | 49 |
+| Broccoli | Vegetables | g | | | 2.8 | 7 |
+| Cabbage | Vegetables | g | | | 1.3 | 6 |
+| Capsicum | Vegetables | g | | | 1 | 6 |
+| Carrot | Vegetables | g | | | 0.9 | 10 |
+| Cashew | Pantry | g | | | 18 | 30 |
+| Cauliflower | Vegetables | g | | | 1.9 | 5 |
+| Chana Dal | Pantry | g | | | 20 | 60 |
+| Cheese | Proteins and Dairy | g | | | 25 | 1.3 |
+| Chicken | Proteins and Dairy | g | | | 27 | 0 |
+| Chicken Breast | Proteins and Dairy | g | 250 g | | 31 | 0 |
+| Chicken Keema | Proteins and Dairy | g | 500 g | | 17 | 0 |
+| Chickpea | Pantry | g | | | 19 | 61 |
+| Coconut Milk | Pantry | ml | | | 2.3 | 6 |
 | Coriander Leaf | Aromatics and Herbs | g | | | | |
-| Cucumber | Vegetables | g | | | | |
-| Curd | Proteins and Dairy | g | 500 g | | | |
+| Cucumber | Vegetables | g | | | 0.7 | 4 |
+| Curd | Proteins and Dairy | g | 500 g | | 3.5 | 5 |
 | Curry Leaf | Aromatics and Herbs | g | | | | |
-| Egg | Proteins and Dairy | pcs | | | | |
-| Fenugreek Leaf | Vegetables | g | | | | |
-| Fish | Proteins and Dairy | g | 500 g | | | |
-| Flattened Rice | Pantry | g | | | | |
-| French Bean | Vegetables | g | | | | |
+| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 |
+| Fenugreek Leaf | Vegetables | g | | | 4.4 | 6 |
+| Fish | Proteins and Dairy | g | 500 g | | 20 | 0 |
+| Flattened Rice | Pantry | g | | | 7 | 77 |
+| French Bean | Vegetables | g | | | 1.8 | 7 |
 | Fruit | Other | pcs | | | | |
 | Garlic | Aromatics and Herbs | g | | | | |
 | Ginger | Aromatics and Herbs | g | | | | |
-| Green Chilli | Aromatics and Herbs | pcs | | | | |
-| Green Pea | Pantry | g | | | | |
-| Kidney Bean | Pantry | g | | | | |
-| Lemon | Aromatics and Herbs | pcs | | | | |
-| Lettuce | Vegetables | g | 100 g | | | |
-| Masoor Dal | Pantry | g | | | | |
-| Milk | Proteins and Dairy | ml | | | | |
+| Green Chilli | Aromatics and Herbs | pcs | | 5 | | |
+| Green Pea | Pantry | g | | | 5 | 14 |
+| Kidney Bean | Pantry | g | | | 24 | 60 |
+| Lemon | Aromatics and Herbs | pcs | | 60 | | |
+| Lettuce | Vegetables | g | 100 g | | 1.4 | 3 |
+| Masoor Dal | Pantry | g | | | 25 | 60 |
+| Milk | Proteins and Dairy | ml | | | 3.4 | 5 |
 | Mint Leaf | Aromatics and Herbs | g | | | | |
-| Moong Dal | Pantry | g | | | | |
-| Mushroom | Vegetables | g | 200 g | | | |
-| Oats | Pantry | g | | | | |
+| Moong Dal | Pantry | g | | | 24 | 59 |
+| Mushroom | Vegetables | g | 200 g | | 3.1 | 3.3 |
+| Oats | Pantry | g | | | 13 | 67 |
 | Onion | Aromatics and Herbs | g | | | | |
-| Paneer | Proteins and Dairy | g | 200 g | | | |
-| Pav Bread | Pantry | pcs | | | | |
-| Peanut | Pantry | g | | | | |
-| Potato | Vegetables | g | | | | |
-| Prawn | Proteins and Dairy | g | 500 g | | | |
-| Raisin | Pantry | g | | | | |
-| Rice Vermicelli | Pantry | g | | | | |
-| Ridge Gourd | Vegetables | g | | | | |
-| Sabudana | Pantry | g | | | | |
-| Semolina | Pantry | g | | | | |
-| Soyabean Chunk | Pantry | g | | | | |
-| Spinach | Vegetables | g | | | | |
-| Sprout | Pantry | g | | | | |
-| Sweet Corn | Pantry | g | | | | |
-| Tinda | Vegetables | g | | | | |
+| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |
+| Pav Bread | Pantry | pcs | | 40 | 8 | 52 |
+| Peanut | Pantry | g | | | 26 | 16 |
+| Potato | Vegetables | g | | | 2 | 17 |
+| Prawn | Proteins and Dairy | g | 500 g | | 20 | 0 |
+| Raisin | Pantry | g | | | 3.1 | 79 |
+| Rice Vermicelli | Pantry | g | | | 6 | 83 |
+| Ridge Gourd | Vegetables | g | | | 0.5 | 4 |
+| Sabudana | Pantry | g | | | 0.2 | 88 |
+| Semolina | Pantry | g | | | 13 | 73 |
+| Soyabean Chunk | Pantry | g | | | 52 | 33 |
+| Spinach | Vegetables | g | | | 2.9 | 4 |
+| Sprout | Pantry | g | | | 9 | 22 |
+| Sweet Corn | Pantry | g | | | 3.4 | 19 |
+| Tinda | Vegetables | g | | | 1 | 5 |
 | Tomato | Aromatics and Herbs | g | | | | |
-| Toor Dal | Pantry | g | | | | |
+| Toor Dal | Pantry | g | | | 22 | 63 |

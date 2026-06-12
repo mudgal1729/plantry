@@ -234,7 +234,7 @@ Statuses: `not started`, `in progress (branch)`, `shipped (#PR)`. Every slice's 
 | 1.1 | `feat/J-bookkeeping` | Commit plan, handoff, planning edits; align root inventories | none | none | shipped (#31) |
 | 1.2 | `feat/J-dish-files-catalog` | Per-dish files + ingredient catalog migration, validators, golden master | 1.1 | none | shipped (#32) |
 | 2.1 | `feat/K-enrichment-schema` | Enrichment frontmatter schema, nutrition.ts, reports | 1.2 | none | shipped (#34) |
-| 2.2 | `data/enrichment-0` | Catalog macros populated; first ~30 dishes enriched | 2.1 | none | not started |
+| 2.2 | `data/enrichment-0` | Catalog macros populated; first ~30 dishes enriched | 2.1 | none | shipped (#35) |
 | 3.1 | `feat/L-picker-skips` | Picker ranking + skipped days (spec + engine + tests) | 2.1 | 2.2, B-track | shipped (#36) |
 | 3.2 | `feat/L-requests-explore` | Requested dishes + explore ranking (spec + engine + tests) | 3.1 | 2.2, B-track | not started |
 | 4.1 | `feat/M-convex-schema` | Schema extensions, nextWeekQueue, six mutations | 3.2 | B-track | not started |

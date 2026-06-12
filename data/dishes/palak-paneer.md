@@ -10,7 +10,10 @@ active: Yes
 satiety: High
 prepMinutes: 30
 seasons: All
+complexity: Medium
 ---
+
+Paneer cubes folded into a smooth, lightly spiced spinach gravy.
 
 ## Ingredients
 
@@ -23,3 +26,11 @@ seasons: All
 | Ginger | 10 | g |
 | Garlic | 10 | g |
 | Green Chilli | 2 | pcs |
+
+## Recipe
+
+1. Blanch the spinach briefly, then blend to a smooth puree.
+2. Saute onion, ginger, garlic and green chilli, add tomato and cook down.
+3. Stir in the spinach puree with salt and a little water, simmer 5 minutes.
+4. Fold in the paneer cubes and warm through.
+5. Finish with a swirl of cream and garam masala.

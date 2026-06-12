@@ -56,14 +56,21 @@ describe("coverageReport", () => {
     expect(cov.macroRelevantWithMacros).toBe(1);
   });
 
-  it("reads near-zero macro coverage on live data (expected pre-2.2)", () => {
+  it("reads full macro coverage and a first enrichment pass on live data (post-2.2)", () => {
     const { library, catalog } = loadLiveData();
     const cov = coverageReport(library, catalog);
-    expect(cov.macroRelevantWithMacros).toBe(0);
+    // Slice 2.2 populated every macro-relevant catalog row.
     expect(cov.macroRelevantCount).toBeGreaterThan(0);
-    // Enrichment fields are all unpopulated this slice too.
-    expect(cov.withDescription).toBe(0);
-    expect(cov.withRecipe).toBe(0);
+    expect(cov.macroRelevantWithMacros).toBe(cov.macroRelevantCount);
+    // Slice 2.2 enriched a first batch of dishes (description + recipe + complexity),
+    // so coverage is now a positive minority, no longer zero, and still well below
+    // the full active library (later enrichment batches burn the rest down).
+    expect(cov.withDescription).toBeGreaterThan(0);
+    expect(cov.withDescription).toBeLessThan(cov.activeDishCount);
+    expect(cov.withRecipe).toBeGreaterThan(0);
+    expect(cov.withComplexity).toBeGreaterThan(0);
+    // Photos remain a separate (B2) track, untouched by this slice.
+    expect(cov.withPhoto).toBe(0);
   });
 });
 
@@ -98,12 +105,21 @@ describe("hpProteinConsistencyReport", () => {
     return { dishId, dishName: "x", ingredient, quantity, unit: "g" };
   }
 
-  it("is empty when no macros are populated (the pre-2.2 state)", () => {
+  it("surfaces drift on live data now that macros are populated (post-2.2)", () => {
     const { library, ingredients, catalog } = loadLiveData();
-    // Live catalog already ships every macro cell blank this slice, so this
-    // exercises the real pre-2.2 state directly.
+    // Slice 2.2 populated the catalog macros, so the report now speaks: it lists
+    // dishes whose derived per-person protein disagrees with their HP tag. This is
+    // information for the slow loop, not a blocking failure; the HP tag stays the
+    // rule input. Every flagged dish carries a real (non-negative) derived protein.
     const drift = hpProteinConsistencyReport(library, ingredients, catalog);
-    expect(drift).toEqual([]);
+    expect(drift.length).toBeGreaterThan(0);
+    for (const d of drift) {
+      expect(d.threshold).toBe(HP_PROTEIN_THRESHOLD_PER_PERSON);
+      expect(d.proteinPerPerson).toBeGreaterThanOrEqual(0);
+      // A flagged dish disagrees with its tag: HP-tagged below threshold, or
+      // above threshold without the tag.
+      expect(d.hasHpTag).toBe(d.proteinPerPerson < HP_PROTEIN_THRESHOLD_PER_PERSON);
+    }
   });
 
   it("flags an HP-tagged dish whose derived protein is below the threshold", () => {

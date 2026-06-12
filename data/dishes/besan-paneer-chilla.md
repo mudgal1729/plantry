@@ -10,7 +10,10 @@ active: Yes
 satiety: High
 prepMinutes: 20
 seasons: All
+complexity: Easy
 ---
+
+Savoury gram-flour pancakes studded with crumbled paneer and onion.
 
 ## Ingredients
 
@@ -21,3 +24,10 @@ seasons: All
 | Green Chilli | 2 | pcs |
 | Coriander Leaf | 10 | g |
 | Tomato | 50 | g |
+
+## Recipe
+
+1. Whisk besan with water, salt and turmeric into a smooth pouring batter.
+2. Stir in crumbled paneer, chopped onion, tomato, green chilli and coriander.
+3. Ladle onto a hot greased tawa and spread into a thin round.
+4. Cook both sides on medium heat until set and lightly browned.
