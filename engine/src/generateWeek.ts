@@ -3,6 +3,7 @@ import type { Day, Meal } from "./eligibility.js";
 import { weekSchedule, type SlotPlan } from "./schedule.js";
 import {
   composeSlot,
+  candidateSetPools,
   shouldSubstituteWeekday,
   type BreakfastWeekdayPairCandidateSet,
   type BreakfastSinglePickCandidateSet,
@@ -15,6 +16,7 @@ import {
 import { rankCandidates, type ConsolidationContext } from "./priority.js";
 import { applyPick, emptyLedger, type IngredientLedger } from "./consolidation.js";
 import { applyCap } from "./cap.js";
+import { planRequests, slotKey } from "./requests.js";
 
 export interface GenerateWeekArgs {
   /** ISO date of the Monday that anchors the week. */
@@ -32,6 +34,14 @@ export interface GenerateWeekArgs {
   lastSaturdayMenu?: 3 | 4 | null;
   /** §3.2 trigger: pin a specific complete_meal Lunch dish to a weekday. */
   userRequestedDishId?: number;
+  /**
+   * §6 requested dishes: dish ids the generation must place, each into a slot
+   * whose composition accepts it, overriding recency. A request that no slot's
+   * composition accepts (out of season, inactive, unknown, or no fitting slot)
+   * is skipped and emits an incident. Defaults to empty, so behaviour is
+   * identical to today and every existing caller stays green.
+   */
+  requests?: number[];
 }
 
 export interface GeneratedWeekSlot {
@@ -79,6 +89,7 @@ export function generateWeek(args: GenerateWeekArgs): GeneratedWeek {
     rng,
     lastSaturdayMenu,
     userRequestedDishId,
+    requests = [],
   } = args;
 
   const baseSchedule = weekSchedule({ weekStart, lastSaturdayMenu, rng });
@@ -101,6 +112,32 @@ export function generateWeek(args: GenerateWeekArgs): GeneratedWeek {
         };
       })
     : baseSchedule;
+
+  // §6 requested dishes: plan each requested id into the first schedule slot
+  // whose §3 composition accepts it, overriding recency. The §3.2 substitution
+  // lead's slot is reserved so a request never collides with it. Unplaceable
+  // requests fall through to incidents and are not placed.
+  const reservedSlots = new Set<string>();
+  if (substitution) {
+    reservedSlots.add(slotKey(substitution.day, "Lunch"));
+  }
+  const requestPlan = planRequests({
+    requests,
+    schedule,
+    library,
+    history,
+    season,
+    reservedSlots,
+  });
+  // Per-slot pinned dish ids: a request forces its dish to the front of the
+  // accepting slot's ranked pool (overriding §4 recency for that position).
+  const pinsBySlot = new Map<string, number[]>();
+  for (const placement of requestPlan.placements) {
+    const key = slotKey(placement.day, placement.meal);
+    const list = pinsBySlot.get(key) ?? [];
+    list.push(placement.dishId);
+    pinsBySlot.set(key, list);
+  }
 
   // Mutable accumulators threaded through the slot loop.
   let ledger: IngredientLedger = emptyLedger(packSizes);
@@ -139,6 +176,7 @@ export function generateWeek(args: GenerateWeekArgs): GeneratedWeek {
         substitution && substitution.day === slot.day && slot.meal === "Lunch"
           ? substitution.leadDishId
           : undefined,
+      pinnedDishIds: pinsBySlot.get(slotKey(slot.day, slot.meal)),
     });
 
     // Update ledger and within-week recency on each pick.
@@ -186,7 +224,7 @@ export function generateWeek(args: GenerateWeekArgs): GeneratedWeek {
   }
   const capped = applyCap({ slotsByDay });
 
-  const incidents: string[] = [];
+  const incidents: string[] = [...requestPlan.incidents];
   for (const dishId of capped.droppedDishIds) {
     const dish = library.find((d) => d.id === dishId);
     const name = dish ? dish.name : `dish ${dishId}`;
@@ -201,6 +239,27 @@ export function generateWeek(args: GenerateWeekArgs): GeneratedWeek {
   // capped order and matching them to the original (day, meal) slot they
   // came from. Drops show up as omissions.
   const cappedDays = projectCapBackToSlots(slotResults, capped.slotsByDay);
+
+  // §6 reconciliation: a planned request placement is only honoured if its
+  // dish actually survives into the final week. A composition slot can expose a
+  // pool a particular pick branch never draws from (e.g. Menu 1's accompaniment
+  // pool when the HP lead is a Dry dish, so its partner is a Gravy instead), and
+  // the §9 cap can drop a placed pick. Either way the pinned dish is then absent.
+  // We re-check every placement against the final week and emit an incident for
+  // any that did not land, so the §6 contract holds: a requested dish appears
+  // exactly once OR yields an incident (never both, never neither).
+  const placedIds = new Set<number>();
+  for (const day of cappedDays) {
+    for (const slot of day.slots) {
+      for (const dish of slot.dishes) placedIds.add(dish.id);
+    }
+  }
+  for (const placement of requestPlan.placements) {
+    if (placedIds.has(placement.dishId)) continue;
+    const dish = library.find((d) => d.id === placement.dishId);
+    const name = dish ? dish.name : `dish ${placement.dishId}`;
+    incidents.push(`Requested ${name} could not be placed (no composition slot accepts it)`);
+  }
 
   return {
     weekStart,
@@ -218,6 +277,14 @@ interface PickSlotArgs {
   sameDayBreakfastPrimaryIngredient?: string;
   /** §3.2: when set, the substituted day's lead complete_meal is pinned. */
   substitutionLeadDishId?: number;
+  /**
+   * §6 requested dishes pinned into this slot. Any pinned dish present in a
+   * ranked pool is moved to the front of that pool (overriding §4 recency), so
+   * it is the pick for its position. A pinned dish absent from every pool is
+   * ignored here (the planner only pins into accepting slots, so this is a
+   * defensive no-op).
+   */
+  pinnedDishIds?: number[];
 }
 
 function pickSlot(args: PickSlotArgs): Dish[] {
@@ -239,12 +306,32 @@ function pickSlot(args: PickSlotArgs): Dish[] {
 }
 
 function rank(args: PickSlotArgs, pool: Dish[]): Dish[] {
-  return rankCandidates({
+  const ranked = rankCandidates({
     pool,
     history: args.compositionHistory,
     sameDayBreakfastPrimaryIngredient: args.sameDayBreakfastPrimaryIngredient,
     consolidationContext: args.consolidationContext,
   });
+  return promotePins(ranked, args.pinnedDishIds);
+}
+
+/**
+ * §6: move any pinned (requested) dishes present in `ranked` to the front,
+ * overriding §4 recency for that position. Pinned dishes keep their relative
+ * order; the rest follow in ranked order. Pinned ids absent from the pool are
+ * ignored (the request planner only pins into accepting slots).
+ */
+function promotePins(ranked: Dish[], pinnedDishIds: number[] | undefined): Dish[] {
+  if (!pinnedDishIds || pinnedDishIds.length === 0) return ranked;
+  const pinnedSet = new Set(pinnedDishIds);
+  const pinned: Dish[] = [];
+  for (const id of pinnedDishIds) {
+    const dish = ranked.find((d) => d.id === id);
+    if (dish) pinned.push(dish);
+  }
+  if (pinned.length === 0) return ranked;
+  const rest = ranked.filter((d) => !pinnedSet.has(d.id));
+  return [...pinned, ...rest];
 }
 
 /**
@@ -514,7 +601,7 @@ export function rankCandidatesForSlot(args: RankCandidatesForSlotArgs): Dish[] {
 
   const context: ConsolidationContext = { ledger, ingredients };
 
-  const pools = poolsOf(candidateSet);
+  const pools = candidateSetPools(candidateSet);
   const ranked: Dish[] = [];
   const seen = new Set<number>();
   for (const pool of pools) {
@@ -531,33 +618,4 @@ export function rankCandidatesForSlot(args: RankCandidatesForSlotArgs): Dish[] {
     }
   }
   return ranked;
-}
-
-/**
- * Union of all position pools inside a candidate set, in their natural order.
- * Used by rankCandidatesForSlot to flatten the per-position pools that
- * composition.ts exposes into one ranked list for the swap UI.
- */
-function poolsOf(set: CandidateSet): Dish[][] {
-  switch (set.kind) {
-    case "breakfast-pair":
-      return [
-        set.optionA.completeMeal,
-        set.optionA.fruit,
-        set.optionB.completeCarb,
-        set.optionB.accompaniment,
-        set.optionC.dryMain,
-        set.optionC.plainCarb,
-      ];
-    case "breakfast-single":
-      return [set.pool];
-    case "menu-1":
-      return [set.hp, set.partnerWhenHpIsDry, set.partnerWhenHpIsGravy, set.lunchCarb];
-    case "menu-2":
-      return [set.keto, set.nonHpGravy, set.nonHpDry, set.lunchCarb];
-    case "menu-3":
-      return [set.completeMealHp, set.accompaniment, set.dessert];
-    case "menu-4":
-      return [set.completeMealNonHp, set.keto, set.accompaniment];
-  }
 }

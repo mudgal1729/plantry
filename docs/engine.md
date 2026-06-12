@@ -1,6 +1,6 @@
 # Engine
 
-The meal-planning rules. This document is the human-readable specification; `engine/src/` is its executable form. Both must change together; any pull request that edits this document without a paired change in `engine/src/` and `engine/test/` fails CI. See §11 for the parity rule in full.
+The meal-planning rules. This document is the human-readable specification; `engine/src/` is its executable form. Both must change together; any pull request that edits this document without a paired change in `engine/src/` and `engine/test/` fails CI. See §13 for the parity rule in full.
 
 ## 1. Data and Eligibility
 
@@ -94,7 +94,7 @@ After §3 composition has produced the candidate set for a slot, rank candidates
 
 1. **Longest unused.** Sort by last-cooked date in `menu_history.md`, oldest first. Never-cooked counts as longest unused.
 2. **Same-day key ingredient deprioritisation.** If breakfast's Primary Ingredient on the same day matches a candidate's Primary Ingredient, deprioritise the candidate. If no viable alternative exists, allow the repeat.
-3. **Ingredient consolidation (§8).** Prefer candidates that consume leftover from earlier picks in the week.
+3. **Ingredient consolidation (§10).** Prefer candidates that consume leftover from earlier picks in the week.
 4. **Preferred=Yes** over Preferred=No.
 
 Recency exemptions: dishes with `fruit` tag, and lunch carbs.
@@ -112,14 +112,38 @@ headOrder(dish) = (recencyTier, proteinBandDistanceForSwaps, id)
 ```
 
 - **recencyTier** is a coarse longest-unused bucket, not a unique index. All never-cooked dishes share the single best (first) tier; cooked dishes are tiered by last-cooked weekStart, oldest weekStart = better tier, so dishes last cooked the same week share a tier. A dish's last-cooked date is the most recent matching history row. This is the dominant term: a longer-unused dish in a better tier always outranks a closer-protein-band dish in a worse tier. Unlike §4, the picker does not exempt fruit or lunch carbs from recency: a swap is a deliberate user choice, so every dish is ranked by recency uniformly. Because the tier is coarse, genuine ties exist (all never-cooked dishes tie; same-week dishes tie), which is what the next term resolves.
-- **proteinBandDistanceForSwaps** applies to swaps only (a dish is being replaced). It is the protein-band distance between the candidate and the outgoing dish, where a protein band is the per-person derived protein (§9) divided into fixed 5 g buckets. Same band is distance zero. Because it sits second in the tuple, it only ever orders candidates that share a recencyTier; it can never move a dish across tiers, so it can never push a more-recently-cooked dish above a longer-unused one. The effect: among equally fresh options, the one in the same protein band as the dish being replaced surfaces first, then nearer bands before farther. For adds (no outgoing dish) this term is absent and the head is pure recency tier then id.
+- **proteinBandDistanceForSwaps** applies to swaps only (a dish is being replaced). It is the protein-band distance between the candidate and the outgoing dish, where a protein band is the per-person derived protein (§11) divided into fixed 5 g buckets. Same band is distance zero. Because it sits second in the tuple, it only ever orders candidates that share a recencyTier; it can never move a dish across tiers, so it can never push a more-recently-cooked dish above a longer-unused one. The effect: among equally fresh options, the one in the same protein band as the dish being replaced surfaces first, then nearer bands before farther. For adds (no outgoing dish) this term is absent and the head is pure recency tier then id.
 - **id** is dish id ascending, the final total tie-break.
 
 **Tail.** Every other pool dish (the same-day repeats the head excluded), ordered by the same tuple comparison. The tail keeps the pool complete (nothing is dropped) while pushing dishes the day already has below fresh options.
 
 **Determinism.** No RNG. Every tie resolves through the fixed tuple chain: recencyTier, then protein-band distance (swaps), then dish id ascending. The same inputs always produce the same order, and input order does not affect output.
 
-## 6. Skipped Days
+## 6. Requested Dishes
+
+Generation accepts an optional list of requested dish ids (the next-week queue feeds it). Each requested dish must be placed into the upcoming week, overriding recency. This generalises the §3.2 trigger (a) into one mechanism: where §3.2 (a) pinned a complete_meal Lunch dish to drive a weekday substitution, a request can pin any dish into any slot whose composition accepts it.
+
+- **Placement.** A requested dish is placed into a slot whose §3 composition accepts it, overriding §4 recency for that position. "Composition accepts it" means the dish appears in at least one position pool of that slot's §3 candidate set: it is an Active, in-season, meal-time-matching dish the slot could legitimately hold. Requests are resolved in their given order; each takes the first schedule slot (in schedule order) whose composition accepts it and that is not already reserved (by a §3.2 substitution) or claimed by an earlier request. Two requests therefore never collide on one slot.
+- **Unplaceable requests.** A request that no slot's composition accepts (out of season, inactive, an unknown id, or no fitting free slot remains) produces an incident and is not placed. Generation never crashes and never forces a dish into an incompatible slot. The dish stays queued; the caller re-queues it the following week.
+- **Minimal by design.** A request is a list of dish ids, not a generic directive language: no calendar awareness, no per-day pinning (a request cannot say "place this on Friday"). That can earn its way in later if it proves needed (Principle 1, Principle 8).
+
+The mechanism is additive: with no requests, generation behaves exactly as §2 to §5 describe, so every existing caller is unchanged. A request that lands in a slot is then subject to the same §9 cap as any other pick; the cap dropping a placed request is reported as a §9 incident, so a requested dish is always either placed exactly once or accounted for by an incident.
+
+## 7. Explore Ranking
+
+The Explore surface ranks the eligible (Active, in-season), never-cooked dishes "familiar but new": dishes the household has not had yet but that resemble what it actually cooks, so novelty still fits the household's habits rather than surfacing random unseen dishes. Like §5, this is a display ranking, not a generation input; it never narrows a pool or blocks a pick.
+
+The pool is every Active, in-season dish with no row in the cooking history. Each pooled dish scores three affinity signals, each normalised to the range zero to one (one being the strongest affinity):
+
+1. **Shared-primary-ingredient frequency.** How dominant the dish's Primary Ingredient is in cooking history: the share of cooked dishes whose Primary Ingredient matches, divided by the most-cooked Primary Ingredient's share, so the single most-cooked ingredient scores one. A paneer dish scores high in a paneer-heavy history.
+2. **Protein-band proximity.** Closeness of the dish's per-person protein (§11) to the household's cooked-median protein, measured in fixed 5 g protein bands: one divided by (one plus the band distance), so a dish in the median band scores one and the score decays with distance. A dish in the household's usual protein range scores high.
+3. **Category familiarity.** How common the dish's Category is in history, normalised the same way as signal 1 (most-cooked Category scores one).
+
+**Combined score** is the equal-weight sum of the three signals. Dishes rank by combined score descending, ties broken by dish id ascending. No RNG: the same inputs always produce the same ranking, and input order does not affect output.
+
+**Dominant-affinity key.** Each ranked dish also carries the single signal that contributed most to its score, as a structured key (`shared-ingredient`, `protein-match`, or `familiar-category`), not user-facing prose. The Explore UI phrases its "why it fits" line from this key (Principle 7: display is decoupled from structure; no internal label text leaks from the engine). Ties between equal signal values resolve by a fixed priority order (shared-ingredient, then protein-match, then familiar-category), so the key is deterministic too.
+
+## 8. Skipped Days
 
 A skipped day is a fast-loop override applied after generation. Generation itself is untouched: the day keeps its generated dishes in the data so a restore is lossless. What changes is what a skipped day contributes downstream:
 
@@ -128,7 +152,7 @@ A skipped day is a fast-loop override applied after generation. Generation itsel
 
 Both are pure, additive functions: the skipped-day input defaults to none, so every existing caller is unchanged. Wiring the override into the running app (the Convex `skippedDays` field and the "Skipped" rendering on the menu share) is a later slice; the engine functions are skip-aware so that wiring is a thin call-site change.
 
-## 7. Item Cap
+## 9. Item Cap
 
 Cap: 5 items per weekday, 3 on Saturday.
 
@@ -139,7 +163,7 @@ If §3 composition produces a menu over the cap, drop dishes one at a time:
 
 Repeat until at the cap.
 
-## 8. Ingredient Consolidation
+## 10. Ingredient Consolidation
 
 Tracked: ingredients whose catalog row in `ingredients.md` carries a `Pack Size`. By-weight items (curry-cut chicken, fresh fish sold loose, fresh vegetables) and pantry staples are not tracked (blank `Pack Size`); buy as needed.
 
@@ -153,9 +177,9 @@ Process:
 
 Soft consolidation: prefer dishes that share fresh produce already on the buy list (capsicum, tomato, cucumber, onion, mint, coriander). One purchase covering multiple dishes beats two small ones.
 
-## 9. Nutrition
+## 11. Nutrition
 
-Dish macros are derived, never hand-stored. There is no per-dish protein or carb field and no override field: the single source of truth is each ingredient row's quantity and the catalog's per-100g macros (§10 field reference). `engine/src/nutrition.ts` computes them; correcting one ingredient's macros corrects every dish that uses it.
+Dish macros are derived, never hand-stored. There is no per-dish protein or carb field and no override field: the single source of truth is each ingredient row's quantity and the catalog's per-100g macros (§12 field reference). `engine/src/nutrition.ts` computes them; correcting one ingredient's macros corrects every dish that uses it.
 
 For one dish:
 
@@ -174,15 +198,15 @@ Grams per ingredient row:
 
 The macros are derived for display and for the reporting layer (below); they are not a §3 composition input or a §4 ranking input. The `HP` tag stays the rule input for high-protein composition; the reporting layer only surfaces drift between the tag and the derived protein.
 
-### 9.1 Reports (non-blocking)
+### 11.1 Reports (non-blocking)
 
-Alongside the blocking validators (§1, §10), a reporting layer in `engine/src/data/validators.ts` produces non-blocking reports, regenerated by `npm run reports` and printed in CI output without failing the build. They carry judgment CI cannot make and feed the slow loop:
+Alongside the blocking validators (§1, §12), a reporting layer in `engine/src/data/validators.ts` produces non-blocking reports, regenerated by `npm run reports` and printed in CI output without failing the build. They carry judgment CI cannot make and feed the slow loop:
 
 - **Coverage report:** the share of active dishes carrying each enrichment field (description, recipe, complexity, photo) and the share of macro-relevant catalog rows carrying macros. Macro-relevant rows are the food groups (Proteins and Dairy, Pantry, Vegetables); aromatics, herbs, and the Other group may stay blank. This is the ratchet the enrichment work burns down; blank macros and unpopulated fields are expected until they are filled, so near-zero coverage is correct, not a failure.
 - **Pool-coverage report:** for each §3 composition slot, per season, the count of eligible candidates. Surfaces thin pools (the source of repetition) and flags when a season change strands a slot. The pools come from the live §3 composition functions, so the report cannot drift from the engine.
 - **HP-vs-protein consistency:** warns when a dish's derived protein and its `HP` tag disagree, using a high-protein threshold of 20 g per person. Dishes whose macros are not yet populated are skipped, so the report stays silent until macros exist. The `HP` tag remains the rule input; this only surfaces drift.
 
-## 10. Field Reference
+## 12. Field Reference
 
 **Per-dish file (`data/dishes/<slug>.md`) frontmatter:**
 
@@ -194,11 +218,11 @@ Alongside the blocking validators (§1, §10), a reporting layer in `engine/src/
   - `complete_meal`: standalone dish, no sides needed.
   - `complete_carb`: substantial carb needing only an accompaniment.
   - `fruit`: pairs with breakfast Option A; recency-exempt.
-- `primaryIngredient`: dominant fresh or packaged ingredient. Drives §4.2 same-day deprioritisation and §8 consolidation. A free categorization label, not required to match a catalog ingredient name. Use `Mixed Veg` when no single vegetable dominates (it never triggers consolidation but does trigger same-day deduplication).
+- `primaryIngredient`: dominant fresh or packaged ingredient. Drives §4.2 same-day deprioritisation and §10 consolidation. A free categorization label, not required to match a catalog ingredient name. Use `Mixed Veg` when no single vegetable dominates (it never triggers consolidation but does trigger same-day deduplication).
 - `preferred`: Yes/No. Used as a tiebreaker in §4.4.
 - `active`: Yes/No. Eligibility filter per §1.
-- `satiety`: High, Medium, or Low. Used by §7.
-- `prepMinutes`: estimated active prep time in minutes. Used by §7 tiebreaker.
+- `satiety`: High, Medium, or Low. Used by §9.
+- `prepMinutes`: estimated active prep time in minutes. Used by §9 tiebreaker.
 - `seasons`: a season list, or `All` for year-round.
 
 Enrichment fields, all optional (absent on a dish parses unchanged; the UI degrades gracefully when missing):
@@ -222,17 +246,17 @@ Enrichment fields, all optional (absent on a dish parses unchanged; the UI degra
 - `Ingredient`: canonical name, one row per ingredient (the union of all names used across dish ingredient rows plus any tracked ingredient).
 - `Group`: the user-facing grocery-list bucket (Proteins and Dairy, Pantry, Vegetables, Aromatics and Herbs, Other).
 - `Unit`: the canonical measure (g/ml/pcs) observed for that ingredient.
-- `Pack Size`: present marks a tracked ingredient (used by §8); blank marks an untracked staple bought by weight.
-- `Grams per piece`: for `pcs`-unit ingredients only (an egg is about 50 g), so §9 nutrition can convert pieces to grams; blank on every other row.
-- `Protein /100g`: protein grams per 100 g, the §9 protein input; blank reads as zero.
-- `Carbs /100g`: carbohydrate grams per 100 g, the §9 carbs input; blank reads as zero.
+- `Pack Size`: present marks a tracked ingredient (used by §10); blank marks an untracked staple bought by weight.
+- `Grams per piece`: for `pcs`-unit ingredients only (an egg is about 50 g), so §11 nutrition can convert pieces to grams; blank on every other row.
+- `Protein /100g`: protein grams per 100 g, the §11 protein input; blank reads as zero.
+- `Carbs /100g`: carbohydrate grams per 100 g, the §11 carbs input; blank reads as zero.
 
-## 11. Spec-code parity
+## 13. Spec-code parity
 
 `docs/engine.md` is the source of truth for what the engine does; `engine/src/` is the source of truth for how it does it. Both must stay in lockstep. CI enforces this with two checks:
 
 1. Any PR that modifies `docs/engine.md` must also modify at least one file under `engine/src/` and at least one file under `engine/test/`. The check fails with a message naming the missing pair.
-2. Each numbered section above corresponds to a module under `engine/src/` plus a paired `engine/test/*.test.ts`: `eligibility.ts` for §1, `schedule.ts` for §2, `composition.ts` for §3, `priority.ts` for §4, `pickerRanking.ts` for §5, `groceryList.ts` (grocery half) and `historyRows.ts` (finalize half) for §6, `cap.ts` for §7, `consolidation.ts` for §8, `nutrition.ts` and the reporting layer in `data/validators.ts` for §9. The simulation harness (`test/simulation.test.ts`) exercises all sections end-to-end against `data/menu_history.md` plus four to six weeks of forward simulation, including a skipped-day week that asserts the §6 property: a skipped day contributes zero grocery rows and zero history rows.
+2. Each numbered section above corresponds to a module under `engine/src/` plus a paired `engine/test/*.test.ts`: `eligibility.ts` for §1, `schedule.ts` for §2, `composition.ts` for §3, `priority.ts` for §4, `pickerRanking.ts` for §5, `requests.ts` for §6, `explore.ts` for §7, `groceryList.ts` (grocery half) and `historyRows.ts` (finalize half) for §8, `cap.ts` for §9, `consolidation.ts` for §10, `nutrition.ts` and the reporting layer in `data/validators.ts` for §11. Requested-dish placement is also exercised end-to-end in `generateWeek` (`generateWeek.ts` consumes `requests.ts`). The simulation harness (`test/simulation.test.ts`) exercises all sections end-to-end against `data/menu_history.md` plus four to six weeks of forward simulation, including a skipped-day week that asserts the §8 property: a skipped day contributes zero grocery rows and zero history rows.
 
 When a rule changes, the order of operations is:
 

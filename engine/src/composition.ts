@@ -97,6 +97,37 @@ export function composeSlot(args: ComposeSlotArgs): CandidateSet {
   }
 }
 
+/**
+ * Flatten a candidate set into its position pools, in their natural order. A
+ * dish appears here iff §3 composition accepts it in some position of the slot.
+ * Used by the swap picker (rankCandidatesForSlot) to union the pools and by the
+ * §6 requested-dishes planner to test whether a slot's composition accepts a
+ * requested dish.
+ */
+export function candidateSetPools(set: CandidateSet): Dish[][] {
+  switch (set.kind) {
+    case "breakfast-pair":
+      return [
+        set.optionA.completeMeal,
+        set.optionA.fruit,
+        set.optionB.completeCarb,
+        set.optionB.accompaniment,
+        set.optionC.dryMain,
+        set.optionC.plainCarb,
+      ];
+    case "breakfast-single":
+      return [set.pool];
+    case "menu-1":
+      return [set.hp, set.partnerWhenHpIsDry, set.partnerWhenHpIsGravy, set.lunchCarb];
+    case "menu-2":
+      return [set.keto, set.nonHpGravy, set.nonHpDry, set.lunchCarb];
+    case "menu-3":
+      return [set.completeMealHp, set.accompaniment, set.dessert];
+    case "menu-4":
+      return [set.completeMealNonHp, set.keto, set.accompaniment];
+  }
+}
+
 function isBigBreakfastDay(day: Day): boolean {
   return day === "Mon" || day === "Wed" || day === "Fri";
 }

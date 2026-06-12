@@ -39,7 +39,7 @@ import type { CatalogIngredient, Ingredient } from "./data/schemas.js";
  *     orders dishes that already share a recencyTier; it can never move a dish
  *     across tiers. A candidate in the same protein band as the dish being
  *     replaced sorts ahead of one a band away. Protein bands are derived from
- *     `nutrition.ts` per-person protein (§9), bucketed by
+ *     `nutrition.ts` per-person protein (§11), bucketed by
  *     `PROTEIN_BAND_WIDTH_GRAMS`. For ADDS (no `outgoingDish`) this term is a
  *     constant 0, so the head is pure recency tier then id.
  *
