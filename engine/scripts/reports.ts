@@ -11,6 +11,7 @@ import {
   coverageReport,
   poolCoverageReport,
   hpProteinConsistencyReport,
+  specialSourcingReport,
 } from "../src/data/validators.js";
 import { loadDishFiles } from "./bake.js";
 
@@ -92,6 +93,18 @@ export function runReports(options: ReportsOptions): string {
       lines.push(
         `  dish ${d.dishId} "${d.dishName}": ${verb} (${d.proteinPerPerson.toFixed(1)} g/person vs ${d.threshold} g)`,
       );
+    }
+  }
+  lines.push("");
+
+  // --- Special-sourcing report --------------------------------------------
+  const special = specialSourcingReport(dishes, ingredients, catalog);
+  lines.push("=== Special-sourcing report (active dishes needing a special trip) ===");
+  if (special.length === 0) {
+    lines.push("No active dish uses a special-sourcing ingredient.");
+  } else {
+    for (const s of special) {
+      lines.push(`  dish ${s.dishId} "${s.dishName}": ${s.ingredients.join(", ")}`);
     }
   }
   lines.push("");

@@ -396,3 +396,54 @@ export function hpProteinConsistencyReport(
   }
   return drift;
 }
+
+/** One active dish that uses at least one special-sourcing ingredient. */
+export interface SpecialSourcingDish {
+  dishId: number;
+  dishName: string;
+  /** The special-sourcing ingredient names the dish uses, sorted. */
+  ingredients: string[];
+}
+
+/**
+ * Special-sourcing report (special-sourcing slice, Rajat request 2026-06-12).
+ * Reporting severity, never blocking: for each active dish, the special-sourcing
+ * ingredients it uses, resolved against the catalog's `Special` flag. Answers
+ * "which dishes need a special shopping trip, and for what" so the week's
+ * supermarket/specialty run is visible up front and the future Swiggy ordering
+ * automation (product.md §8) has a machine-readable sourcing signal. A dish with
+ * no special ingredients is omitted. An ingredient row that does not resolve to
+ * a catalog row contributes nothing here (the blocking name-resolution validator
+ * already guards resolution).
+ */
+export function specialSourcingReport(
+  dishes: Dish[],
+  ingredients: Ingredient[],
+  catalog: CatalogIngredient[],
+): SpecialSourcingDish[] {
+  const specialNames = new Set(catalog.filter((c) => c.special).map((c) => c.ingredient));
+  const rowsByDishId = new Map<number, Ingredient[]>();
+  for (const row of ingredients) {
+    const list = rowsByDishId.get(row.dishId);
+    if (list) list.push(row);
+    else rowsByDishId.set(row.dishId, [row]);
+  }
+
+  const out: SpecialSourcingDish[] = [];
+  for (const dish of dishes) {
+    if (dish.active !== "Yes") continue;
+    const rows = rowsByDishId.get(dish.id) ?? [];
+    const special = new Set<string>();
+    for (const row of rows) {
+      if (specialNames.has(row.ingredient)) special.add(row.ingredient);
+    }
+    if (special.size === 0) continue;
+    out.push({
+      dishId: dish.id,
+      dishName: dish.name,
+      ingredients: Array.from(special).sort((a, b) => a.localeCompare(b)),
+    });
+  }
+  out.sort((a, b) => a.dishId - b.dishId);
+  return out;
+}

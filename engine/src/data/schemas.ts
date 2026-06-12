@@ -131,6 +131,13 @@ export const CatalogIngredientSchema = z.object({
   proteinPer100g: z.number().nonnegative().optional(),
   /** Carbohydrate grams per 100 g of the ingredient. Blank reads as zero. */
   carbsPer100g: z.number().nonnegative().optional(),
+  // Sourcing metadata (special-sourcing slice, Rajat request 2026-06-12). The
+  // machine-readable surface ordering automation needs (product.md §8): which
+  // ingredients are NOT stocked by a regular Bangalore sabziwala/kirana and so
+  // need a supermarket or specialty-store run. `true` marks special sourcing; a
+  // blank `Special` cell parses to `false` (the common case, regular sourcing).
+  /** True when the ingredient needs special sourcing (blank cell reads false). */
+  special: z.boolean(),
 });
 export type CatalogIngredient = z.infer<typeof CatalogIngredientSchema>;
 

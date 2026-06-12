@@ -180,6 +180,12 @@ const CATALOG_PREAMBLE = [
   "schema-present from slice 2.1 and populated in slice 2.2; until then every",
   "macro cell is blank, which the coverage report expects.",
   "",
+  "`Special` is `Yes` for an ingredient that needs special sourcing (not stocked",
+  "by a regular Bangalore sabziwala/kirana, so a supermarket or specialty-store",
+  "run); blank means regular sourcing, the common case. The special-sourcing",
+  "report (engine.md Reports) lists, per active dish, which special ingredients",
+  "it uses, so the week's special shopping trip is visible up front.",
+  "",
   "Grouping judgment calls (institutional memory; do not silently re-bucket):",
   "",
   "- Onion and Tomato: Aromatics and Herbs. Both are the base of nearly every",
@@ -207,12 +213,18 @@ const CATALOG_HEADERS = [
   "Grams per piece",
   "Protein /100g",
   "Carbs /100g",
+  "Special",
 ];
 
 /** A macro/grams-per-piece cell: blank when absent, else the bare number. */
 function macroCell(value: number | undefined): string {
   if (value === undefined) return "";
   return String(value);
+}
+
+/** The Special cell: "Yes" for special sourcing, blank for regular. */
+function specialCell(special: boolean): string {
+  return special ? "Yes" : "";
 }
 
 export function serializeIngredientCatalog(catalog: CatalogIngredient[]): string {
@@ -229,6 +241,7 @@ export function serializeIngredientCatalog(catalog: CatalogIngredient[]): string
         macroCell(row.gramsPerPiece),
         macroCell(row.proteinPer100g),
         macroCell(row.carbsPer100g),
+        specialCell(row.special),
       ]),
     );
   }

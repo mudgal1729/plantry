@@ -91,9 +91,9 @@ describe("bake validator integration", () => {
     const ingredientsMd = [
       "# Ingredient Catalog",
       "",
-      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |",
-      "|------------|-------|------|-----------|-----------------|---------------|-------------|",
-      "| Chicken | Proteins and Dairy | g | 500 g | | | |",
+      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g | Special |",
+      "|------------|-------|------|-----------|-----------------|---------------|-------------|---------|",
+      "| Chicken | Proteins and Dairy | g | 500 g | | | | |",
       "",
     ].join("\n");
     writeFileSync(resolve(dataDir, "ingredients.md"), ingredientsMd);

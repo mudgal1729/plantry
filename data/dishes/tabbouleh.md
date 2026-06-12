@@ -21,7 +21,7 @@ A bright herb salad of parsley, tomato and bulgur dressed with lemon and olive o
 | Ingredient | Quantity | Unit |
 |------------|----------|------|
 | Bulgur Wheat | 60 | g |
-| Coriander Leaf | 60 | g |
+| Parsley | 60 | g |
 | Mint Leaf | 20 | g |
 | Tomato | 120 | g |
 | Onion | 40 | g |

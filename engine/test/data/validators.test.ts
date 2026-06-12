@@ -156,8 +156,8 @@ describe("validateCatalogGroups", () => {
 
   it("throws on a duplicated catalog ingredient", () => {
     const catalog: CatalogIngredient[] = [
-      { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", packSize: "200 g" },
-      { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g" },
+      { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", packSize: "200 g", special: false },
+      { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", special: false },
     ];
     expect(() => validateCatalogGroups(catalog)).toThrow(/Paneer.*appears 2 times/);
   });
@@ -190,7 +190,7 @@ describe("validateIngredientNamesResolve", () => {
       },
     ];
     const catalog: CatalogIngredient[] = [
-      { ingredient: "Chicken", group: "Proteins and Dairy", unit: "g" },
+      { ingredient: "Chicken", group: "Proteins and Dairy", unit: "g", special: false },
     ];
     expect(() => validateIngredientNamesResolve(dishFiles, catalog)).toThrow(
       /"Phantom Spice".*ghost-dish/,

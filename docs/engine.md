@@ -205,6 +205,7 @@ Alongside the blocking validators (§1, §12), a reporting layer in `engine/src/
 - **Coverage report:** the share of active dishes carrying each enrichment field (description, recipe, complexity, photo) and the share of macro-relevant catalog rows carrying macros. Macro-relevant rows are the food groups (Proteins and Dairy, Pantry, Vegetables); aromatics, herbs, and the Other group may stay blank. This is the ratchet the enrichment work burns down; blank macros and unpopulated fields are expected until they are filled, so near-zero coverage is correct, not a failure.
 - **Pool-coverage report:** for each §3 composition slot, per season, the count of eligible candidates. Surfaces thin pools (the source of repetition) and flags when a season change strands a slot. The pools come from the live §3 composition functions, so the report cannot drift from the engine.
 - **HP-vs-protein consistency:** warns when a dish's derived protein and its `HP` tag disagree, using a high-protein threshold of 20 g per person. Dishes whose macros are not yet populated are skipped, so the report stays silent until macros exist. The `HP` tag remains the rule input; this only surfaces drift.
+- **Special-sourcing report:** for each active dish, the special-sourcing ingredients it uses, resolved against the catalog's `Special` flag (§12). Answers "which dishes need a special shopping trip, and for what", so the week's supermarket or specialty-store run is visible up front; a dish with no special ingredients is omitted. This is the sourcing signal the future Swiggy ordering automation (product.md §8) consumes.
 
 ## 12. Field Reference
 
@@ -250,6 +251,7 @@ Enrichment fields, all optional (absent on a dish parses unchanged; the UI degra
 - `Grams per piece`: for `pcs`-unit ingredients only (an egg is about 50 g), so §11 nutrition can convert pieces to grams; blank on every other row.
 - `Protein /100g`: protein grams per 100 g, the §11 protein input; blank reads as zero.
 - `Carbs /100g`: carbohydrate grams per 100 g, the §11 carbs input; blank reads as zero.
+- `Special`: `Yes` for an ingredient that needs special sourcing (not stocked by a regular Bangalore sabziwala/kirana, so a supermarket or specialty-store run); blank means regular sourcing, the common case. Feeds the special-sourcing report (§11.1) and the machine-readable sourcing surface future ordering automation needs (product.md §8).
 
 ## 13. Spec-code parity
 

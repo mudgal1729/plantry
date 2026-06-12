@@ -231,11 +231,12 @@ describe("ingredient catalog round-trip", () => {
     const input = [
       "# Ingredient Catalog",
       "",
-      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |",
-      "|------------|-------|------|-----------|-----------------|---------------|-------------|",
-      "| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 |",
-      "| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |",
-      "| Onion | Aromatics and Herbs | g | | | | |",
+      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g | Special |",
+      "|------------|-------|------|-----------|-----------------|---------------|-------------|---------|",
+      "| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 | |",
+      "| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 | |",
+      "| Onion | Aromatics and Herbs | g | | | | | |",
+      "| Tahini | Pantry | g | | | 17 | 21 | Yes |",
       "",
     ].join("\n");
     const catalog = parseIngredientCatalog(input);
@@ -243,14 +244,19 @@ describe("ingredient catalog round-trip", () => {
     expect(egg.gramsPerPiece).toBe(50);
     expect(egg.proteinPer100g).toBe(13);
     expect(egg.carbsPer100g).toBe(1.1);
+    expect(egg.special).toBe(false);
     const onion = catalog.find((c) => c.ingredient === "Onion")!;
     expect(onion.gramsPerPiece).toBeUndefined();
     expect(onion.proteinPer100g).toBeUndefined();
+    expect(onion.special).toBe(false);
+    const tahini = catalog.find((c) => c.ingredient === "Tahini")!;
+    expect(tahini.special).toBe(true);
 
     const out = serializeIngredientCatalog(catalog);
-    expect(out).toContain("| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 |");
-    expect(out).toContain("| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |");
-    expect(out).toContain("| Onion | Aromatics and Herbs | g | | | | |");
+    expect(out).toContain("| Egg | Proteins and Dairy | pcs | | 50 | 13 | 1.1 | |");
+    expect(out).toContain("| Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 | |");
+    expect(out).toContain("| Onion | Aromatics and Herbs | g | | | | | |");
+    expect(out).toContain("| Tahini | Pantry | g | | | 17 | 21 | Yes |");
     // And a re-parse of the serialized output is stable (idempotent).
     expect(serializeIngredientCatalog(parseIngredientCatalog(out))).toBe(out);
   });
@@ -259,9 +265,9 @@ describe("ingredient catalog round-trip", () => {
     const malformed = [
       "# Ingredient Catalog",
       "",
-      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |",
-      "|------------|-------|------|-----------|-----------------|---------------|-------------|",
-      "| Paneer | Not A Group | g | 200 g | | | |",
+      "| Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g | Special |",
+      "|------------|-------|------|-----------|-----------------|---------------|-------------|---------|",
+      "| Paneer | Not A Group | g | 200 g | | | | |",
       "",
     ].join("\n");
     expect(() => parseIngredientCatalog(malformed)).toThrow(/Paneer/);

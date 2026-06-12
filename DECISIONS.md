@@ -308,3 +308,23 @@ Worktrees: `../plantry-stream-A` (`feat/A-data-history`), `../plantry-stream-B` 
 - 9.1 slow-loop upgrade: slow loop gains five new signal channels (skip/delete/add/save patterns, unplaceable requests), proactive report-driven runs (coverage + pool-coverage reports as inputs, so a zero-comment week can still yield a useful PR), per-dish-file targets, mark-applied extension for nextWeekQueue (new cluster-block key + internal mutation), updated fixtures.
 - Mechanical path updates to MAINTENANCE.md and the slow-loop command ride slice 1.2 (lockstep: no doc points at dead paths between slices).
 **Right-size check:** resume protocol is process-level (doc convention, no tooling); slow-loop upgrade is infrastructure-level and earns it because every new fast-loop affordance (skip, delete, add, save) otherwise produces signal nothing consumes; structure alignment is a data fix to three stale lists.
+
+---
+
+## 2026-06-12 — Special-sourcing catalog column + per-dish eval (+ parsley)
+
+**Stream:** `feat/special-ingredients` (engineer, Rajat add-on to the design revamp; not a §5 spine slice).
+**Trigger:** Rajat asked to (a) source parsley and flag it as a specially-sourced ingredient, and (b) add an eval that flags dishes using ingredients that must be sourced specially (not at the regular Bangalore sabziwala/kirana). This is the additive sourcing metadata design-revamp §1.1 anticipated and the §8 ordering-automation sourcing signal.
+**Chosen level:** a catalog `Special` column (`Yes`/blank) plus a non-blocking special-sourcing report in `data/validators.ts`, wired into `npm run reports`. The smallest level that captures per-ingredient sourcing once and reports it per dish. Rejected: a per-dish `buySpecially` freeform note (already exists for prose; it does not generalize across dishes or feed a machine-readable report).
+**Ingredients marked `Special = Yes` (proposed set, for Rajat's review):**
+- parsley (new row, Aromatics and Herbs, macros ~3 protein / 6 carbs per 100 g) — fresh continental parsley, not a sabziwala staple.
+- tahini — sesame paste, specialty/import aisle.
+- tofu — supermarket chilled aisle, not at a kirana.
+- mozzarella — fresh/Italian cheese, supermarket only (generic processed Cheese stays blank).
+- bulgur wheat — cracked-wheat specialty grain, supermarket only.
+- olive oil — supermarket cooking-oil aisle, not the kirana mustard/sunflower default.
+- basil (borderline call: marked) — fresh continental basil (distinct from tulsi), a specialty herb.
+- pasta, spaghetti (borderline calls: marked) — packaged Italian dry goods, supermarket only.
+**Borderline items left blank (regular sourcing):** noodles (Hakka/instant, kirana staple), cornflour (kirana staple), bean sprout (fresh mung sprouts are common at a Bangalore sabziwala), generic cheese, soyabean chunk. These are reversible by editing one cell.
+**Tabbouleh fix:** `data/dishes/tabbouleh.md` switched its ingredient row from Coriander Leaf to Parsley (its description already said parsley); now that Parsley is in the catalog the name-resolution validator passes.
+**Right-size check:** structural by definition (new catalog column + reporting eval), but the chosen levels favor a data-and-validator structure over code special cases (a column the catalog parser/serializer round-trip carry, a pure reporting function), per Principles 1, 2, 8. Additive: existing catalog rows read a blank `Special` cell as regular sourcing, so no migration. Out of scope (recorded so it is not forgotten): Convex, PWA, grocery-list surfacing of special sourcing, new dishes.

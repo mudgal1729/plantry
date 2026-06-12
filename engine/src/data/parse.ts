@@ -349,6 +349,7 @@ const CATALOG_HEADERS = [
   "Grams per piece",
   "Protein /100g",
   "Carbs /100g",
+  "Special",
 ];
 
 /**
@@ -386,6 +387,14 @@ export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
       cells[5].length > 0 ? parseNumberStrict(cells[5], "Protein /100g", rowKey) : undefined;
     const carbsPer100g =
       cells[6].length > 0 ? parseNumberStrict(cells[6], "Carbs /100g", rowKey) : undefined;
+    // The Special cell is "Yes" for special sourcing; blank means regular
+    // sourcing (the common case). Only "Yes" or blank are accepted so a typo
+    // (e.g. "yes", "Y") fails the build loudly rather than silently parsing.
+    const specialRaw = cells[7];
+    if (specialRaw.length > 0 && specialRaw !== "Yes") {
+      throw new Error(`${rowKey}: Special must be "Yes" or blank, got "${specialRaw}"`);
+    }
+    const special = specialRaw === "Yes";
     try {
       out.push(
         CatalogIngredientSchema.parse({
@@ -396,6 +405,7 @@ export function parseIngredientCatalog(markdown: string): CatalogIngredient[] {
           ...(gramsPerPiece !== undefined ? { gramsPerPiece } : {}),
           ...(proteinPer100g !== undefined ? { proteinPer100g } : {}),
           ...(carbsPer100g !== undefined ? { carbsPer100g } : {}),
+          special,
         }),
       );
     } catch (err) {

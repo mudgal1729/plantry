@@ -96,6 +96,7 @@ Field notes:
 - `Pack Size` present means tracked (drives consolidation and pack rounding); blank means untracked. Same semantics as today's header table, now one table for all ingredients.
 - `Grams per piece` applies only to `pcs`-unit ingredients (an egg is about 50 g) so macro math can convert pieces to grams.
 - `Protein /100g` and `Carbs /100g` power derived dish macros (§1.2). Blank reads as zero and shows up in the coverage report; spices and aromatics can stay blank forever, protein sources and staples cannot.
+- `Special` is `Yes` for an ingredient that needs special sourcing (not stocked by a regular Bangalore sabziwala/kirana, so a supermarket or specialty-store run); blank means regular sourcing, the common case. It drives the special-sourcing report (§1.3) and is the first of the additive sourcing columns this layer anticipated.
 - This table is exactly the machine-readable surface the Swiggy ordering automation needs (product.md §8 invariants 1 and 3): canonical names, no qualifiers, pack sizes in their own column. Brand preference and substitution policy slot in later as additive columns.
 
 **Unchanged:** `data/menu_history.md`, `data/changelog.md`. **New:** `data/dish-photos/<slug>.jpg` (web-ready images committed to the repo, copied into the PWA bundle at build time) and `data/dish-photos/STYLE.md` (the photo style spec, §4.2).
@@ -123,6 +124,7 @@ An expansion of `engine/src/data/validators.ts` plus a CI step. Two severities:
 - **Coverage report:** percent of active dishes with description, recipe, complexity, photo; percent of macro-relevant catalog rows with macros. The enrichment work (§4) burns this down; the report is the ratchet that shows progress and catches regressions.
 - **Pool-coverage report:** for each composition slot in `docs/engine.md` §3, per season, the count of eligible candidates. Thin pools (today: Chilla 1, Bread 1, Chapati 1, Fruit 1, Rice 4, Dessert 5, Keto 7) are where repetition comes from; this report directs the library expansion (§4.3) and flags when a season change strands a slot.
 - **HP-vs-protein consistency** (per §1.2).
+- **Special-sourcing report:** for each active dish, the special-sourcing ingredients it uses, resolved against the catalog's `Special` column (§1.1). Surfaces which dishes need a supermarket or specialty-store trip and feeds the ordering-automation sourcing signal (product.md §8).
 
 ### 1.4 Engine additions (each is an engine.md section + module + tests, per the parity rule)
 
@@ -209,6 +211,7 @@ Conclusions from reviewing the repo structure against the docs that describe it:
 | 10 | "Include recipe when sharing" resets weekly | EM default: **yes** (it marks "this week's tricky dish", not a permanent property; permanent would re-attach stale recipes forever). |
 | 11 | Delete may leave a day below its composition shape | EM default: **allowed** (the fast loop is permissive by principle; swaps already skip composition checks; the share image simply shows fewer items). |
 | 12 | Explore "dislike" affordance | **Feature confirmed by Rajat** (2026-06-12): the Explore tab gets a dislike that records a slow-loop signal and does nothing in-session. Design choices are EM defaults, reversible until 7.1 ships: (a) **storage** is a new `dishDislikes` table (`{ createdAt, author, dishId, reason, status, consumedWeekStart }`) plus a `dislikeDish` mutation, built in 7.1, additive and existing-rows-safe, **not** a `manualChanges` kind (a dislike is not a change to the week); (b) the **reason is optional** (a dislike is a lightweight tap, unlike decision 8's required save-reason); (c) **no in-session effect and no auto-hide ever** (Principle 5): the fast loop never re-ranks or hides on a dislike; the only consequence is via the slow loop, which clusters dislikes and may deactivate or down-rank a dish under right-size discipline (§1.8). |
+| 13 | Special-sourcing column + report | **Feature requested by Rajat** (2026-06-12): the catalog gains a `Special` column (`Yes`/blank) marking ingredients not stocked by a regular Bangalore sabziwala/kirana, and a non-blocking special-sourcing report lists, per active dish, the special ingredients it uses. Parsley is sourced and marked special; tabbouleh switches from Coriander Leaf to Parsley (its description already says parsley). Additive (existing rows read blank as regular sourcing); it is the first of the additive sourcing columns §1.1 anticipated and feeds the §8 ordering-automation sourcing signal. Out of scope here: Convex, PWA, grocery-list surfacing of special sourcing (the report is the ask; surfacing can come later). |
 
 EM defaults are logged in `DECISIONS.md` and reversible until their slice ships; say the word to flip any.
 

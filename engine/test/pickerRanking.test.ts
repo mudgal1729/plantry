@@ -116,6 +116,7 @@ describe("§5 picker ranking", () => {
         unit: "g",
         proteinPer100g: 25,
         carbsPer100g: 0,
+        special: false,
       },
       {
         ingredient: "Rice",
@@ -123,6 +124,7 @@ describe("§5 picker ranking", () => {
         unit: "g",
         proteinPer100g: 2,
         carbsPer100g: 80,
+        special: false,
       },
     ];
 

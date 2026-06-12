@@ -47,8 +47,16 @@ const catalog: CatalogIngredient[] = [
     unit: "g",
     proteinPer100g: 25,
     carbsPer100g: 0,
+    special: false,
   },
-  { ingredient: "Rice", group: "Pantry", unit: "g", proteinPer100g: 2, carbsPer100g: 80 },
+  {
+    ingredient: "Rice",
+    group: "Pantry",
+    unit: "g",
+    proteinPer100g: 2,
+    carbsPer100g: 80,
+    special: false,
+  },
 ];
 
 describe("§7 explore ranking", () => {

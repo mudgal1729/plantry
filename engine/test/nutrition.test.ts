@@ -15,8 +15,16 @@ describe("deriveDishMacros", () => {
         unit: "g",
         proteinPer100g: 18,
         carbsPer100g: 4,
+        special: false,
       },
-      { ingredient: "Rice", group: "Pantry", unit: "g", proteinPer100g: 7, carbsPer100g: 78 },
+      {
+        ingredient: "Rice",
+        group: "Pantry",
+        unit: "g",
+        proteinPer100g: 7,
+        carbsPer100g: 78,
+        special: false,
+      },
     ];
     const rows = [ing("Paneer", 200, "g"), ing("Rice", 100, "g")];
     const macros = deriveDishMacros(rows, catalog);
@@ -37,6 +45,7 @@ describe("deriveDishMacros", () => {
         unit: "g",
         proteinPer100g: 25,
         carbsPer100g: 0,
+        special: false,
       },
     ];
     // 100 g chicken -> dish total 25 g protein -> per person 12.5 g.
@@ -56,6 +65,7 @@ describe("deriveDishMacros", () => {
         gramsPerPiece: 50,
         proteinPer100g: 13,
         carbsPer100g: 1,
+        special: false,
       },
     ];
     // 2 eggs -> 100 g -> protein 13, carbs 1 (dish total); per person 6.5 and 0.5.
@@ -72,8 +82,16 @@ describe("deriveDishMacros", () => {
         unit: "ml",
         proteinPer100g: 3.4,
         carbsPer100g: 5,
+        special: false,
       },
-      { ingredient: "Rice", group: "Pantry", unit: "g", proteinPer100g: 7, carbsPer100g: 78 },
+      {
+        ingredient: "Rice",
+        group: "Pantry",
+        unit: "g",
+        proteinPer100g: 7,
+        carbsPer100g: 78,
+        special: false,
+      },
       {
         ingredient: "Egg",
         group: "Proteins and Dairy",
@@ -81,6 +99,7 @@ describe("deriveDishMacros", () => {
         gramsPerPiece: 50,
         proteinPer100g: 13,
         carbsPer100g: 1,
+        special: false,
       },
     ];
     // 200 ml milk -> 200 g (1:1) -> protein 6.8, carbs 10 (dish total).
@@ -106,6 +125,7 @@ describe("deriveDishMacros", () => {
         unit: "pcs",
         proteinPer100g: 2,
         carbsPer100g: 9,
+        special: false,
       },
     ];
     const macros = deriveDishMacros([ing("Green Chilli", 3, "pcs")], catalog);
@@ -117,8 +137,14 @@ describe("deriveDishMacros", () => {
   it("reads a blank (absent) macro as zero", () => {
     const catalog: CatalogIngredient[] = [
       // Onion has no macros in the catalog (blank cells): contributes zero.
-      { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g" },
-      { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", proteinPer100g: 18 },
+      { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g", special: false },
+      {
+        ingredient: "Paneer",
+        group: "Proteins and Dairy",
+        unit: "g",
+        proteinPer100g: 18,
+        special: false,
+      },
     ];
     // Only Paneer contributes protein; Onion (blank) adds nothing; carbs all blank -> 0.
     const macros = deriveDishMacros([ing("Onion", 150, "g"), ing("Paneer", 200, "g")], catalog);

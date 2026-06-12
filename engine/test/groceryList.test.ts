@@ -8,16 +8,22 @@ import type { CatalogIngredient, Dish, Ingredient, PackSizeHeader } from "../src
 // fallback, which the live name-resolution validator makes unreachable for
 // real dishes but the aggregator still guards.
 const CATALOG: CatalogIngredient[] = [
-  { ingredient: "Paneer", group: "Proteins and Dairy", unit: "g", packSize: "200 g" },
-  { ingredient: "Curd", group: "Proteins and Dairy", unit: "g", packSize: "500 g" },
-  { ingredient: "Mushroom", group: "Vegetables", unit: "g", packSize: "200 g" },
-  { ingredient: "Chickpea", group: "Pantry", unit: "g" },
-  { ingredient: "Coconut Milk", group: "Pantry", unit: "ml" },
-  { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g" },
-  { ingredient: "Tomato", group: "Aromatics and Herbs", unit: "g" },
-  { ingredient: "Garlic", group: "Aromatics and Herbs", unit: "g" },
-  { ingredient: "Coriander Leaf", group: "Aromatics and Herbs", unit: "g" },
-  { ingredient: "Lemon", group: "Aromatics and Herbs", unit: "pcs" },
+  {
+    ingredient: "Paneer",
+    group: "Proteins and Dairy",
+    unit: "g",
+    packSize: "200 g",
+    special: false,
+  },
+  { ingredient: "Curd", group: "Proteins and Dairy", unit: "g", packSize: "500 g", special: false },
+  { ingredient: "Mushroom", group: "Vegetables", unit: "g", packSize: "200 g", special: false },
+  { ingredient: "Chickpea", group: "Pantry", unit: "g", special: false },
+  { ingredient: "Coconut Milk", group: "Pantry", unit: "ml", special: false },
+  { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g", special: false },
+  { ingredient: "Tomato", group: "Aromatics and Herbs", unit: "g", special: false },
+  { ingredient: "Garlic", group: "Aromatics and Herbs", unit: "g", special: false },
+  { ingredient: "Coriander Leaf", group: "Aromatics and Herbs", unit: "g", special: false },
+  { ingredient: "Lemon", group: "Aromatics and Herbs", unit: "pcs", special: false },
 ];
 
 let nextId = 1000;
