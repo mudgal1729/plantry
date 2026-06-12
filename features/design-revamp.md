@@ -247,7 +247,7 @@ Statuses: `not started`, `in progress (branch)`, `shipped (#PR)`. Every slice's 
 | 9.1 | `feat/R-slow-loop-upgrade` | Slow loop reads new signals + reports; mark-applied + fixtures updated | 4.2 (and 2.1 for reports) | 5.x, 6.1, 7.1, 8.1 | not started |
 | 10.1 | `docs/maintenance-<date>` | product.md full rewrite to current state; /reconcile-docs sweep; archive this spec | 6.1, 7.1, 8.1, 9.1 | B-track tails | not started |
 | B1.1–B1.3 | `data/enrichment-<n>` | Remaining ~90 dishes enriched, ~30 per batch | 2.2 | everything | not started |
-| B2.1 | `data/photos-style` | STYLE.md photo spec + first photo batch | 2.1 | everything | in progress (#PR — STYLE.md committed; first photo batch pending external image generation) |
+| B2.1 | `data/photos-style` | STYLE.md photo spec + first photo batch | 2.1 | everything | in progress (#37 — STYLE.md committed; first photo batch pending external image generation) |
 | B2.2+ | `data/photos-<n>` | Photo batches to full coverage | B2.1 | everything | not started |
 | B3.1–B3.4 | `data/expansion-<n>` | ~80 new dishes, ~20 per batch, pool-report-driven | 2.2, B1 flowing | everything | not started |
 
