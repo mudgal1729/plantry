@@ -247,7 +247,7 @@ Statuses: `not started`, `in progress (branch)`, `shipped (#PR)`. Every slice's 
 | 3.2 | `feat/L-requests-explore` | Requested dishes + explore ranking (spec + engine + tests) | 3.1 | 2.2, B-track | shipped (#39) |
 | 4.1 | `feat/M-convex-schema` | Schema extensions, nextWeekQueue, six mutations | 3.2 | B-track | shipped (#42) |
 | 4.2 | `feat/M-convex-queries` | Feed/explore/grocery queries, generation consumes queue, archive skip-exclusion | 4.1 | B-track | shipped (#50) |
-| 5.1 | `feat/N-pwa-shell` | Tokens, primitives, tab bar, Menu + Grocery read-only, photo fallback | 4.2 | B-track | not started |
+| 5.1 | `feat/N-pwa-shell` | Tokens, primitives, tab bar, Menu + Grocery read-only, photo fallback | 4.2 | B-track | shipped (#52) |
 | 5.2 | `feat/N-pwa-editing` | Day screen + full editing family + comments entry points | 5.1 | B-track | not started |
 | 6.1 | `feat/O-changes-tab` | Changes tab + summary line; old comments sidebar retires | 5.2 | 7.1, 8.1, 9.1 | not started |
 | 7.1 | `feat/P-explore` | Explore tab + use-this-week + next-week flow + dislike signal | 5.2 | 6.1, 8.1, 9.1 | not started |
