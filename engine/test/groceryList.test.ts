@@ -368,3 +368,66 @@ describe("catalog-driven grouping (single-homed in data/ingredients.md)", () => 
     expect(groupOf("Coconut Milk")).toBe("Pantry");
   });
 });
+
+describe("skip-aware day input (docs/engine.md §6 Skipped days)", () => {
+  it("day-tagged input with no skipped days equals the flattened weekPicks", () => {
+    const monDish = makeDish();
+    const friDish = makeDish();
+    const ingredients: Ingredient[] = [
+      row(monDish.id, monDish.name, "Paneer", 150),
+      row(friDish.id, friDish.name, "Chickpea", 100),
+    ];
+    const viaDays = aggregateGroceryList({
+      days: [
+        { day: "Mon", dishes: [monDish] },
+        { day: "Fri", dishes: [friDish] },
+      ],
+      ingredients,
+      packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
+    });
+    const viaFlat = aggregateGroceryList({
+      weekPicks: [monDish, friDish],
+      ingredients,
+      packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
+    });
+    expect(viaDays).toEqual(viaFlat);
+  });
+
+  it("excludes a skipped day's dishes from the grocery list", () => {
+    const monDish = makeDish();
+    const friDish = makeDish();
+    const ingredients: Ingredient[] = [
+      row(monDish.id, monDish.name, "Paneer", 150),
+      row(friDish.id, friDish.name, "Chickpea", 100),
+    ];
+    const result = aggregateGroceryList({
+      days: [
+        { day: "Mon", dishes: [monDish] },
+        { day: "Fri", dishes: [friDish] },
+      ],
+      skippedDays: ["Fri"],
+      ingredients,
+      packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
+    });
+    // Fri's Chickpea is gone; only Mon's Paneer survives.
+    const allItems = result.groups.flatMap((g) => g.items.map((i) => i.ingredient));
+    expect(allItems).toContain("Paneer");
+    expect(allItems).not.toContain("Chickpea");
+  });
+
+  it("a fully skipped week yields an empty grocery list", () => {
+    const monDish = makeDish();
+    const ingredients: Ingredient[] = [row(monDish.id, monDish.name, "Paneer", 150)];
+    const result = aggregateGroceryList({
+      days: [{ day: "Mon", dishes: [monDish] }],
+      skippedDays: ["Mon"],
+      ingredients,
+      packSizes: PACK_SIZES_ALL,
+      catalog: CATALOG,
+    });
+    expect(result.groups).toEqual([]);
+  });
+});

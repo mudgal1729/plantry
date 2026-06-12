@@ -1,8 +1,8 @@
 import { query, mutation } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
-import { dishes, packSizes, ingredients } from "@plantry/engine/library";
+import { dishes, ingredients, catalog } from "@plantry/engine/library";
 import { history } from "@plantry/engine/history";
-import { rankCandidates, emptyLedger, applyPick, type IngredientLedger } from "@plantry/engine";
+import { rankPickerAlternatives } from "@plantry/engine";
 import type { Dish, Season, MenuHistoryRow } from "@plantry/engine";
 import { assertAuthor } from "./lib/author.js";
 
@@ -96,39 +96,41 @@ function broadPool(meal: LowerMeal, season: Season): Dish[] {
 }
 
 /**
- * Builds the within-week ledger and synthetic history that §4 priority needs.
- * Picks already on the plate (other slots, other positions) seed the ledger
- * (§6 consolidation) and the recency tilt (§4 step 1).
+ * Builds the synthetic within-week history the picker ranking reads for its
+ * recency term (docs/engine.md §5). Picks already on the plate (other slots,
+ * other positions) record a virtual cooking on `weekStart`, so the picker
+ * treats them as recently cooked and pushes them down the ranked list. The day
+ * tag is cosmetic for recency (the ranking keys on dishId + weekStart), so we
+ * tag every synthetic row with the slot's day uniformly.
  */
-function buildRankingContext(
+function buildSyntheticHistory(
   weekStart: string,
   day: ShortDay,
   meal: LowerMeal,
   currentWeekPicks: Dish[],
-): {
-  ledger: IngredientLedger;
-  syntheticHistory: MenuHistoryRow[];
-  sameDayBreakfastPrimary: string | undefined;
-} {
-  let ledger: IngredientLedger = emptyLedger(packSizes);
-  for (const dish of currentWeekPicks) {
-    ledger = applyPick(ledger, dish, ingredients);
-  }
-  const syntheticHistory: MenuHistoryRow[] = currentWeekPicks.map((d) => ({
+): MenuHistoryRow[] {
+  return currentWeekPicks.map((d) => ({
     weekStart,
     day: LONG_DAY[day],
     meal: meal === "breakfast" ? "Breakfast" : "Lunch",
     dishName: d.name,
     dishId: d.id,
   }));
-  return {
-    ledger,
-    syntheticHistory,
-    sameDayBreakfastPrimary: undefined, // §4 step 2 same-day-breakfast tilt is
-    // engine-internal during generation; for swap-time ranking we leave it
-    // undefined so the picker is meal-symmetric across positions. The slow
-    // loop learns what users actually want via the resulting incidents.
-  };
+}
+
+/** The dishes already placed on `day` (any meal, any position), library only. */
+function dishesOnDay(slots: ReadonlyArray<SlotShape>, day: ShortDay): Dish[] {
+  const libraryById = new Map<number, Dish>(dishes.map((d) => [d.id, d]));
+  const onDay: Dish[] = [];
+  for (const slot of slots) {
+    if (slot.day !== day) continue;
+    for (const pick of slot.dishes) {
+      if (pick.dishId === null) continue;
+      const dish = libraryById.get(pick.dishId);
+      if (dish) onDay.push(dish);
+    }
+  }
+  return onDay;
 }
 
 /**
@@ -153,10 +155,15 @@ function buildRankingContext(
  *     narrowing). This is the deliberate fast-loop affordance: the user can
  *     land on any dish; §3 violations are signal for the slow loop, not
  *     errors the fast loop blocks. See `docs/product.md` §4 Principle 4.
- *   - Builds the §6 consolidation ledger and §4 step 1 synthetic history from
- *     the live week's other picks (the slot/position being ranked is
- *     excluded so its current pick does not count against itself).
- *   - Ranks via the engine's `rankCandidates` (§4 priority).
+ *   - Ranks via the engine's picker ranking (`rankPickerAlternatives`,
+ *     docs/engine.md §5), NOT §4 selection priority. The head ("fits this day")
+ *     is the not-already-on-the-day dishes ranked by recency plus protein-band
+ *     similarity to the dish being replaced; the tail is the same-day repeats.
+ *     The broad-pool eligibility filter (above) is unchanged: this switch only
+ *     changes the ORDER of the alternatives, not which dishes appear.
+ *   - Synthetic within-week history from the live week's other picks (the
+ *     slot/position being ranked is excluded so its current pick does not count
+ *     against itself) feeds the recency term.
  *   - Filters out the currently-picked dish at this position so the user is
  *     not offered the same dish.
  *   - Returns at most `limit` (default 10) Dish objects.
@@ -194,6 +201,11 @@ export const getSlotAlternatives = query({
       currentSlot && currentSlot.dishes[args.position]
         ? currentSlot.dishes[args.position].dishId
         : null;
+    // The dish being replaced: drives the picker's protein-band similarity term
+    // (docs/engine.md §5). Null when the position is a custom one-off (no
+    // library id) — the picker then ranks by recency only.
+    const outgoingDish =
+      currentDishId === null ? undefined : dishes.find((d) => d.id === currentDishId);
 
     const currentWeekPicks = collectCurrentWeekPicks(slots, {
       day: args.day,
@@ -201,7 +213,7 @@ export const getSlotAlternatives = query({
       position: args.position,
     });
 
-    const { ledger, syntheticHistory, sameDayBreakfastPrimary } = buildRankingContext(
+    const syntheticHistory = buildSyntheticHistory(
       args.weekStart,
       args.day,
       args.meal,
@@ -210,11 +222,14 @@ export const getSlotAlternatives = query({
 
     const pool = broadPool(args.meal, season);
 
-    const ranked = rankCandidates({
+    const ranked = rankPickerAlternatives({
       pool,
+      meal: args.meal === "breakfast" ? "Breakfast" : "Lunch",
+      dishesOnDay: dishesOnDay(slots, args.day),
       history: [...history, ...syntheticHistory],
-      sameDayBreakfastPrimaryIngredient: sameDayBreakfastPrimary,
-      consolidationContext: { ledger, ingredients },
+      outgoingDish,
+      ingredients,
+      catalog,
     });
 
     const filtered = currentDishId === null ? ranked : ranked.filter((d) => d.id !== currentDishId);

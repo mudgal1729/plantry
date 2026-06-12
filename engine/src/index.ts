@@ -89,6 +89,10 @@ export type {
   RankCandidatesForSlotArgs,
 } from "./generateWeek.js";
 export { aggregateGroceryList } from "./groceryList.js";
-export type { GroceryItem, GroceryList } from "./groceryList.js";
+export type { GroceryItem, GroceryList, GroceryDayPicks } from "./groceryList.js";
 export { deriveDishMacros, proteinToCarbRatio, HOUSEHOLD_SERVINGS } from "./nutrition.js";
 export type { DishMacros } from "./nutrition.js";
+export { rankPickerAlternatives, PROTEIN_BAND_WIDTH_GRAMS } from "./pickerRanking.js";
+export type { PickerRankingArgs } from "./pickerRanking.js";
+export { deriveHistoryRows } from "./historyRows.js";
+export type { DeriveHistoryRowsArgs } from "./historyRows.js";
