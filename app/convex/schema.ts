@@ -128,13 +128,20 @@ export default defineSchema({
     createdAt: v.number(),
     author: v.union(v.literal("rajat"), v.literal("tuhina")),
     weekStart: v.string(), // ISO date of the Monday, mirrors currentWeek.weekStart
-    day: v.union(
-      v.literal("Mon"),
-      v.literal("Tue"),
-      v.literal("Wed"),
-      v.literal("Thu"),
-      v.literal("Fri"),
-      v.literal("Sat"),
+    // Optional because some change kinds have no natural day. A `save_next_week`
+    // targets next week (not a day of this week), so it omits `day` entirely
+    // rather than carrying a non-semantic placeholder. Day-scoped kinds (swap,
+    // custom, delete, add, skip_day, restore_day) still set it. Loosening
+    // required->optional is additive: existing rows all carry `day` and validate.
+    day: v.optional(
+      v.union(
+        v.literal("Mon"),
+        v.literal("Tue"),
+        v.literal("Wed"),
+        v.literal("Thu"),
+        v.literal("Fri"),
+        v.literal("Sat"),
+      ),
     ),
     // Optional because day-level kinds (skip_day, restore_day, save_next_week)
     // are not scoped to a single (meal, position). Loosening required->optional

@@ -90,7 +90,7 @@ manualChanges                          # append-only log of user edits
   createdAt: number
   author: "rajat" | "tuhina"
   weekStart: string                    # ISO Monday, mirrors currentWeek
-  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"
+  day?: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"  # absent for day-less kinds (save_next_week)
   meal?: "breakfast" | "lunch"         # absent for day-level kinds
   position?: number                    # index into slots[].dishes; absent for day-level kinds
   changeKind: "swap" | "custom" | "delete" | "add" | "skip_day" | "restore_day" | "save_next_week"
@@ -105,7 +105,8 @@ manualChanges                          # append-only log of user edits
 # add) carry meal + position and the before/after pick state; `add` uses a null
 # `before`, `delete` a null `after`. Day-level kinds (skip_day, restore_day) carry
 # the day and null before/after. `save_next_week` records the saved dish in
-# `after.dishId` (it targets next week, not a day of this one). This table plus
+# `after.dishId` and omits `day` entirely (it targets next week, not a day of
+# this one). This table plus
 # `comments` is the data behind the Changes tab.
 
 nextWeekQueue                          # dishes saved for next week from Explore

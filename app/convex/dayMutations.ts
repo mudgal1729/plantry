@@ -495,13 +495,9 @@ export const saveForNextWeek = mutation({
       author: args.author,
       weekStart: args.weekStart,
       // A save targets next week, not a day of this week, so there is no natural
-      // `day`. The brief makes only `meal`/`position` optional (not `day`), so the
-      // field stays required; "Mon" is a non-semantic placeholder. The dish saved
-      // is the load-bearing value and lives in `after.dishId`. The activity feed
-      // (4.2) keys this kind off `after`, not `day`. EM: flag if you would rather
-      // `day` also become optional for this kind (same safe required->optional
-      // loosening) — kept in-scope per the brief's explicit list.
-      day: "Mon",
+      // `day`; omit it (the schema makes `day` optional for day-less kinds). The
+      // dish saved is the load-bearing value and lives in `after.dishId`; the
+      // activity feed (4.2) keys this kind off `after`, not `day`.
       changeKind: "save_next_week",
       before: { dishId: null, customLabel: null },
       after: { dishId: args.dishId, customLabel: null },
