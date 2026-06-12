@@ -1,0 +1,29 @@
+[
+  {
+    "_id": "nwq_fixture_001",
+    "createdAt": 1715212800000,
+    "author": "tuhina",
+    "dishId": 102,
+    "reason": "Want this next week; never shows up in the generated menu.",
+    "status": "queued",
+    "consumedWeekStart": null
+  },
+  {
+    "_id": "nwq_fixture_002",
+    "createdAt": 1716422400000,
+    "author": "tuhina",
+    "dishId": 102,
+    "reason": "Again for next week, still not getting it.",
+    "status": "queued",
+    "consumedWeekStart": null
+  },
+  {
+    "_id": "nwq_fixture_003",
+    "createdAt": 1712620800000,
+    "author": "rajat",
+    "dishId": 47,
+    "reason": "Saved this weeks ago on a whim; never placed.",
+    "status": "queued",
+    "consumedWeekStart": null
+  }
+]

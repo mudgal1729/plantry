@@ -42,5 +42,108 @@
     "status": "queued",
     "resolvedAt": null,
     "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_003",
+    "createdAt": 1717977600000,
+    "author": "rajat",
+    "weekStart": "2026-06-01",
+    "day": "Thu",
+    "meal": "lunch",
+    "position": 2,
+    "changeKind": "delete",
+    "before": {
+      "dishId": 88,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "reason": "Three dishes at lunch is too much food on a weekday; dropped the dessert.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_004",
+    "createdAt": 1718064000000,
+    "author": "tuhina",
+    "weekStart": "2026-06-01",
+    "day": "Fri",
+    "meal": "lunch",
+    "position": 2,
+    "changeKind": "add",
+    "before": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": 64,
+      "customLabel": null
+    },
+    "reason": "Wanted a salad alongside; the generated lunch felt heavy without something fresh.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_005",
+    "createdAt": 1718150400000,
+    "author": "rajat",
+    "weekStart": "2026-06-01",
+    "day": "Fri",
+    "changeKind": "skip_day",
+    "before": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "reason": "Eating out Friday night; skip the day so it stays off the grocery list.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_006",
+    "createdAt": 1718236800000,
+    "author": "rajat",
+    "weekStart": "2026-06-01",
+    "day": "Fri",
+    "changeKind": "restore_day",
+    "before": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "reason": "Plans fell through; cooking Friday after all, restore the day.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
+  },
+  {
+    "_id": "mc_fixture_007",
+    "createdAt": 1718323200000,
+    "author": "tuhina",
+    "weekStart": "2026-06-01",
+    "changeKind": "save_next_week",
+    "before": {
+      "dishId": null,
+      "customLabel": null
+    },
+    "after": {
+      "dishId": 102,
+      "customLabel": null
+    },
+    "reason": "Saw this in Explore and want it next week; we keep not getting it in the generated menu.",
+    "status": "queued",
+    "resolvedAt": null,
+    "resolvedPr": null
   }
 ]

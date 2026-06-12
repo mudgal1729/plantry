@@ -1,0 +1,29 @@
+[
+  {
+    "_id": "dis_fixture_001",
+    "createdAt": 1717804800000,
+    "author": "rajat",
+    "dishId": 88,
+    "reason": "Not a fan, would rather not see it again.",
+    "status": "queued",
+    "consumedWeekStart": null
+  },
+  {
+    "_id": "dis_fixture_002",
+    "createdAt": 1717891200000,
+    "author": "tuhina",
+    "dishId": 88,
+    "reason": null,
+    "status": "queued",
+    "consumedWeekStart": null
+  },
+  {
+    "_id": "dis_fixture_003",
+    "createdAt": 1717977600000,
+    "author": "rajat",
+    "dishId": 31,
+    "reason": "Too heavy for me.",
+    "status": "queued",
+    "consumedWeekStart": null
+  }
+]
