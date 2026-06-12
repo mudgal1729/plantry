@@ -142,7 +142,8 @@ All changes are **additive** (new optional fields, new union members, new table)
 - `currentWeek`: add optional `skippedDays: array of { day, reason, author, skippedAt }`; add optional `includeRecipe: boolean` to each dish entry (lives on the week, so it resets naturally when a new week document is created).
 - `manualChanges.changeKind`: add `"delete" | "add" | "skip_day" | "restore_day" | "save_next_week"`. `meal` and `position` become optional (meaningless for day-level kinds). `before`/`after` use null entries for add and delete. This table plus `comments` is the data behind the Changes tab; no new activity table is needed.
 - New table `nextWeekQueue`: `{ createdAt, author, dishId, reason, status: "queued" | "placed" | "dropped", consumedWeekStart: string | null }`. The generation run reads queued rows as `requests`, marks placed ones `placed` with the week, and leaves unplaceable ones queued (incident logged). The slow loop may mark stale rows `dropped` (§1.8).
-- New mutations (each writing its `manualChanges` row in the same transaction, same pattern as `swapDish`): `deleteDish`, `addDish` (library dish into a day, appends a position), `skipDay`, `restoreDay`, `saveForNextWeek`, plus `setIncludeRecipe` (share preference, not a menu change, so it does **not** write a manualChanges row).
+- New table `dishDislikes`: `{ createdAt, author, dishId, reason: string | null, status: "queued" | "applied" | "dismissed", consumedWeekStart: string | null }`, parallel in shape to `nextWeekQueue`. A dislike is a slow-loop input only, never a change to the current week, so it is its own table and **not** a `manualChanges` kind. Rows are written queued and read by the slow loop, which clusters them and may deactivate or down-rank a dish under right-size discipline (§1.8); the loop marks consumed rows `applied` or `dismissed`. Built in slice 7.1 (the Explore slice owns the dislike end to end).
+- New mutations (each writing its `manualChanges` row in the same transaction, same pattern as `swapDish`): `deleteDish`, `addDish` (library dish into a day, appends a position), `skipDay`, `restoreDay`, `saveForNextWeek`, plus `setIncludeRecipe` (share preference, not a menu change, so it does **not** write a manualChanges row). Plus `dislikeDish` (writes a `dishDislikes` row; it records a slow-loop signal, not a week change, so it writes no `manualChanges` row), built in slice 7.1.
 - Queries: activity feed (manualChanges for the week; the client merges in the existing comments query), explore feed (engine explore ranking joined with archive-derived last-cooked), grocery list excluding skipped days.
 - `weekArchive` append on finalize excludes skipped days' rows.
 - Convex file naming stays camelCase (hyphenated filenames silently break the Deploy Convex action; verify the action after every `app/convex/` merge).
@@ -151,7 +152,7 @@ The dish library (now with photos, recipes, macros) continues to reach the front
 
 ### 1.6 PWA (full rebuild to the handoff)
 
-Four tabs: Menu, Grocery, Explore, Changes. Editing is day-level or dish-level only, entered from a day card's Edit button; meal blocks are never edited as a unit. Every screen, overlay, and token ports from `design_handoff/` (tokens verbatim into `app/web/src/index.css`). Old components (`CurrentWeekView`, `SlotEditor`, the comments sidebar) retire. Dish photos render with a graceful no-photo fallback (text-only card) so partial photo coverage never looks broken. Day-level comments keep an entry point: a "Comment on this day" affordance on the Day screen, alongside the handoff's dish-level entry in the details sheet. The prototype's behaviors are the contract; its implementation (window globals, localStorage state) is not: the real app keeps Convex subscriptions and optimistic concurrency exactly as today.
+Four tabs: Menu, Grocery, Explore, Changes. Editing is day-level or dish-level only, entered from a day card's Edit button; meal blocks are never edited as a unit. Every screen, overlay, and token ports from `design_handoff/` (tokens verbatim into `app/web/src/index.css`). Old components (`CurrentWeekView`, `SlotEditor`, the comments sidebar) retire. Dish photos render with a graceful no-photo fallback (text-only card) so partial photo coverage never looks broken. Day-level comments keep an entry point: a "Comment on this day" affordance on the Day screen, alongside the handoff's dish-level entry in the details sheet. The Explore tab carries a records-only dislike affordance on each dish: tapping it records a slow-loop signal (`dislikeDish`, §1.5) and does nothing in-session, neither re-ranking the explore feed nor hiding the dish (Principle 5, record do not apply; Principle 7, no internal labels leak). The prototype's behaviors are the contract; its implementation (window globals, localStorage state) is not: the real app keeps Convex subscriptions and optimistic concurrency exactly as today.
 
 ### 1.7 Share output (image family)
 
@@ -167,13 +168,16 @@ The revamp multiplies what the slow loop can learn from, and the slow-loop machi
 - **Add patterns.** Repeated manual adds of the same category read as under-generation.
 - **Save-for-next-week patterns.** A dish queued repeatedly is a dish the engine under-picks: maybe `preferred` should flip, maybe its recency treatment is wrong. Stale queued rows (saved but never placed for weeks) are also signal; the slow loop may mark them `dropped` with a reason.
 - **Unplaceable requests.** A queued dish that composition keeps rejecting (incident trail) means either the dish is mis-categorized or the composition is too rigid. Both are classic right-size calls.
+- **Dislike patterns.** A dish disliked from the Explore tab (`dishDislikes`, §1.5) is a candidate for deactivation or explore down-ranking, but right-size applies: one dislike is not a deactivation; a pattern (the same dish disliked repeatedly, or disliked by both household members) is the threshold for structural action. The optional reason on a dislike, when present, sharpens the call. The fast loop never acts on a dislike; the slow loop is the only path to any consequence (Principle 5).
 - **Dish-level comment volume per dish** (the new entry point will raise comment frequency; per-dish clustering becomes natural).
 
 **Proactive inputs, not just reactive ones.** The slow loop also reads the coverage report and the pool-coverage report each run. Even a week with zero comments can produce a useful PR: "Monsoon strands the Dessert slot at 2 candidates, propose activating X and Y" or "12 dishes still lack recipes, here is the next enrichment batch priority". This is the self-healing half the validators cannot do alone: validators keep facts true, the slow loop keeps the library good.
 
 **Targets change.** The slow loop edits `data/dishes/<slug>.md` files and catalog rows instead of table rows in two monolithic files. One dish change is one file diff, which makes slow-loop PRs materially easier for Rajat to review.
 
-**Mark-applied closes the loop for the queue too.** The PR-body cluster blocks gain a `next_week_queue_ids:` key, and a new internal mutation marks consumed queue rows, so a slow-loop decision about a stale saved dish gets written back to Convex like every other consumed signal.
+The reactive inputs the loop reads gain `dishDislikes` (queued rows) alongside `nextWeekQueue`, comments, and the new-kind `manualChanges` rows.
+
+**Mark-applied closes the loop for the queue too.** The PR-body cluster blocks gain a `next_week_queue_ids:` key and a `dislike_ids:` key, and new internal mutations mark consumed queue rows and consumed dislike rows (`applied` or `dismissed`), so a slow-loop decision about a stale saved dish or a clustered dislike gets written back to Convex like every other consumed signal.
 
 ---
 
@@ -204,6 +208,7 @@ Conclusions from reviewing the repo structure against the docs that describe it:
 | 9 | Explore hides dishes already placed this week or queued for next | EM default: **yes** (the tab's promise is "new on the plate"; showing something already scheduled breaks it). |
 | 10 | "Include recipe when sharing" resets weekly | EM default: **yes** (it marks "this week's tricky dish", not a permanent property; permanent would re-attach stale recipes forever). |
 | 11 | Delete may leave a day below its composition shape | EM default: **allowed** (the fast loop is permissive by principle; swaps already skip composition checks; the share image simply shows fewer items). |
+| 12 | Explore "dislike" affordance | **Feature confirmed by Rajat** (2026-06-12): the Explore tab gets a dislike that records a slow-loop signal and does nothing in-session. Design choices are EM defaults, reversible until 7.1 ships: (a) **storage** is a new `dishDislikes` table (`{ createdAt, author, dishId, reason, status, consumedWeekStart }`) plus a `dislikeDish` mutation, built in 7.1, additive and existing-rows-safe, **not** a `manualChanges` kind (a dislike is not a change to the week); (b) the **reason is optional** (a dislike is a lightweight tap, unlike decision 8's required save-reason); (c) **no in-session effect and no auto-hide ever** (Principle 5): the fast loop never re-ranks or hides on a dislike; the only consequence is via the slow loop, which clusters dislikes and may deactivate or down-rank a dish under right-size discipline (§1.8). |
 
 EM defaults are logged in `DECISIONS.md` and reversible until their slice ships; say the word to flip any.
 
@@ -242,9 +247,9 @@ Statuses: `not started`, `in progress (branch)`, `shipped (#PR)`. Every slice's 
 | 5.1 | `feat/N-pwa-shell` | Tokens, primitives, tab bar, Menu + Grocery read-only, photo fallback | 4.2 | B-track | not started |
 | 5.2 | `feat/N-pwa-editing` | Day screen + full editing family + comments entry points | 5.1 | B-track | not started |
 | 6.1 | `feat/O-changes-tab` | Changes tab + summary line; old comments sidebar retires | 5.2 | 7.1, 8.1, 9.1 | not started |
-| 7.1 | `feat/P-explore` | Explore tab + use-this-week + next-week flow | 5.2 | 6.1, 8.1, 9.1 | not started |
+| 7.1 | `feat/P-explore` | Explore tab + use-this-week + next-week flow + dislike signal | 5.2 | 6.1, 8.1, 9.1 | not started |
 | 8.1 | `feat/Q-share-family` | Share image family, includeRecipe toggle, Web Share | 5.2 | 6.1, 7.1, 9.1 | not started |
-| 9.1 | `feat/R-slow-loop-upgrade` | Slow loop reads new signals + reports; mark-applied + fixtures updated | 4.2 (and 2.1 for reports) | 5.x, 6.1, 7.1, 8.1 | not started |
+| 9.1 | `feat/R-slow-loop-upgrade` | Slow loop reads new signals (incl. dislike signal) + reports; mark-applied + fixtures updated | 4.2 (and 2.1 for reports) | 5.x, 6.1, 7.1, 8.1 | not started |
 | 10.1 | `docs/maintenance-<date>` | product.md full rewrite to current state; /reconcile-docs sweep; archive this spec | 6.1, 7.1, 8.1, 9.1 | B-track tails | not started |
 | B1.1–B1.3 | `data/enrichment-<n>` | Remaining ~90 dishes enriched, ~30 per batch | 2.2 | everything | shipped (#38 #40 #41; all library dishes enriched) |
 | B2.1 | `data/photos-style` | STYLE.md photo spec + first photo batch | 2.1 | everything | in progress (#37 — STYLE.md committed; first photo batch pending external image generation) |
@@ -307,7 +312,7 @@ Feed over manualChanges + comments, the Menu summary line wired to real data, ol
 
 ### 6.12 Explore tab (7.1)
 
-Explore feed query + filters (Easy to cook, Healthy, Breakfast, Lunch) + dish sheet opening with recipe visible + "Use this week" (day picker, `addDish`) + "Next week" (`saveForNextWeek`). Hides dishes placed this week or queued (decision 9).
+Explore feed query + filters (Easy to cook, Healthy, Breakfast, Lunch) + dish sheet opening with recipe visible + "Use this week" (day picker, `addDish`) + "Next week" (`saveForNextWeek`). Hides dishes placed this week or queued (decision 9). This slice also owns the dislike end to end: the `dishDislikes` table and `dislikeDish` mutation (§1.5) plus a records-only dislike affordance on the Explore dish sheet. A tap records the signal and does nothing in-session: the explore ranking is unaffected and the dish is not hidden (Principle 5; decision 12). The reason is optional. The only consequence is downstream, via the slow loop (§6.14).
 
 ### 6.13 Share family (8.1)
 
@@ -315,7 +320,7 @@ Menu, grocery, and recipe share-image components; includeRecipe toggle wiring; s
 
 ### 6.14 Slow-loop upgrade (9.1)
 
-The substance upgrade from §1.8. MAINTENANCE.md §1: inputs gain the coverage and pool-coverage reports and `nextWeekQueue`; clustering guidance gains the five new signal patterns (skips, deletes, adds, saves, unplaceable requests); right-size examples table rewritten for the per-dish-file structure; a "proactive run" subsection (zero comments can still produce a useful PR from the reports). `.claude/commands/slow-loop.md`: same updates, plus reading `npm run reports` output. Mark-applied: `next_week_queue_ids:` key in cluster blocks, new internal mutation for queue rows, script and MAINTENANCE.md §3 updated. Fixtures: add new-kind manualChanges examples and a nextWeekQueue example; keep backward tolerance for older fixtures. Dry-run the upgraded loop against the fixtures before opening the PR.
+The substance upgrade from §1.8. MAINTENANCE.md §1: inputs gain the coverage and pool-coverage reports, `nextWeekQueue`, and `dishDislikes`; clustering guidance gains the six new signal patterns (skips, deletes, adds, saves, unplaceable requests, dislikes); right-size examples table rewritten for the per-dish-file structure (dislike example: one dislike is no change, a dish disliked repeatedly or by both users is a deactivation or explore down-rank candidate); a "proactive run" subsection (zero comments can still produce a useful PR from the reports). `.claude/commands/slow-loop.md`: same updates, plus reading `npm run reports` output. Mark-applied: `next_week_queue_ids:` and `dislike_ids:` keys in cluster blocks, new internal mutations for queue rows and dislike rows, script and MAINTENANCE.md §3 updated. Fixtures: add new-kind manualChanges examples and a nextWeekQueue example; keep backward tolerance for older fixtures. Dry-run the upgraded loop against the fixtures before opening the PR.
 
 ### 6.15 Docs close-out (10.1)
 

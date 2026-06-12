@@ -19,6 +19,20 @@ Decisions Rajat must approve go in the "Open items" list in `features/phase2.md`
 
 ---
 
+## 2026-06-12 — Design revamp: Explore "dislike" design defaults (planning)
+
+**Stream:** planning (design-revamp, no code touched)
+**Context:** Rajat (2026-06-12) asked for a "dislike" option in the Explore tab that does nothing in the current session but is read by the slow loop. The Explore tab is slice 7.1 (not built yet) and the slow-loop upgrade is slice 9.1, so the requirement is woven into both via `features/design-revamp.md` (§1.5, §1.6, §1.8, §3 decision 12, §6.12, §6.14, §5 table). The feature itself is Rajat-confirmed; the three design choices below are EM defaults, reversible until 7.1 ships.
+**Options considered:** (a) **storage** — a new `dishDislikes` table parallel to `nextWeekQueue` vs. a new `manualChanges` kind vs. reusing `comments`. (b) **reason** — required (uniform with the save-for-next-week rule, decision 8) vs. optional. (c) **in-session behavior** — record-only vs. also re-rank or hide the disliked dish in the explore feed.
+**Chosen:**
+- **(a) `dishDislikes` table + `dislikeDish` mutation, built in 7.1.** `{ createdAt, author, dishId, reason: string | null, status: "queued" | "applied" | "dismissed", consumedWeekStart: string | null }`. Additive and existing-rows-safe (per [[convex-schema-breaking-change]], no wipe needed). **Not** a `manualChanges` kind: a dislike is a signal about a dish, not a change to the current week, so folding it into the week's change log would mis-shape both the Changes tab and the slow loop's clustering. Not `comments` either: a dislike is a structured per-dish signal with a lifecycle (queued -> applied/dismissed), not free text.
+- **(b) reason optional.** A dislike is a lightweight tap; requiring a "why" would add friction to a one-gesture action whose value is the signal itself. This deliberately differs from decision 8 (required reason on save-for-next-week), where the reason is the whole point of the queued action.
+- **(c) record-only, no in-session effect, no auto-hide ever.** The fast loop never re-ranks the explore feed or hides the dish on a dislike (Principle 5, record do not apply; Principle 7, no internal labels leak). The only consequence is via the slow loop (9.1), which clusters dislikes and may deactivate or down-rank a dish under right-size discipline: one dislike is no change; a dish disliked repeatedly, or by both household members, is a structural candidate.
+**Reversibility:** easy, until 7.1 ships. The table, mutation, and affordance do not exist yet; flipping any of the three defaults is a brief edit before the slice is built. After 7.1 ships, the table is additive and droppable, the reason field can become required with a UI change, and in-session behavior is fast-loop reversible.
+**Right-size check (per `docs/product.md` §4):** problem size structural (a new slow-loop signal channel); fix level new table + mutation + UI affordance (the smallest level that captures the signal with a consumable lifecycle, mirroring the established `nextWeekQueue` pattern); generality: dislikes join the slow loop's signal set exactly like skips, deletes, adds, saves, and unplaceable requests, and the mark-applied mechanism extends with a `dislike_ids:` cluster key the same way it did for `next_week_queue_ids:`.
+
+---
+
 ## 2026-06-10 — Stream H §6a dropped; Stream I (manual-changes log) supersedes it
 
 **Stream:** I (post-v1)
