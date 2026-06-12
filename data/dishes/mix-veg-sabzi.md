@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 25
 seasons: All
+complexity: Easy
 ---
+
+A dry stir-fry of mixed vegetables in a light onion-tomato masala.
 
 ## Ingredients
 
@@ -26,3 +29,11 @@ seasons: All
 | Ginger | 10 | g |
 | Green Chilli | 1 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Dice all the vegetables small so they cook evenly.
+2. Saute onion, ginger and green chilli, then add tomato and ground spices.
+3. Add the vegetables, the harder ones first, and cook covered till just tender.
+4. Uncover and toss on high heat to dry off any moisture.
+5. Finish with coriander.
