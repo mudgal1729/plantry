@@ -10,7 +10,11 @@ active: Yes
 satiety: High
 prepMinutes: 35
 seasons: All
+complexity: Medium
+buySpecially: Curry cut chicken, 600g
 ---
+
+A gentle Kerala-style chicken stew in a coconut-milk broth.
 
 ## Ingredients
 
@@ -25,3 +29,11 @@ seasons: All
 | Garlic | 10 | g |
 | Curry Leaf | 5 | g |
 | Green Chilli | 2 | pcs |
+
+## Recipe
+
+1. Saute ginger, garlic, green chilli, curry leaves and sliced onion without browning.
+2. Add the chicken and sear lightly, then add diced potato and carrot.
+3. Pour in water, cover and simmer until the chicken and vegetables are tender.
+4. Stir in the coconut milk and warm through without boiling.
+5. Season and finish with a little pepper.

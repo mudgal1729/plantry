@@ -10,7 +10,10 @@ active: No
 satiety: Medium
 prepMinutes: 10
 seasons: All
+complexity: Easy
 ---
+
+A protein-rich salad of boiled chickpeas with onion, tomato and lemon.
 
 ## Ingredients
 
@@ -23,3 +26,10 @@ seasons: All
 | Lemon | 1 | pcs |
 | Coriander Leaf | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Use boiled chickpeas, drained and cooled.
+2. Finely dice the onion, tomato and cucumber.
+3. Toss with chopped green chilli, coriander, salt and a pinch of chaat masala.
+4. Squeeze over the lemon just before serving.

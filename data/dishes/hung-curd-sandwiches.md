@@ -10,7 +10,11 @@ active: No
 satiety: Medium
 prepMinutes: 15
 seasons: All
+complexity: Easy
+prePrep: Hang the curd overnight to drain
 ---
+
+Sandwiches filled with thick hung curd and crunchy vegetables.
 
 ## Ingredients
 
@@ -23,3 +27,10 @@ seasons: All
 | Onion | 50 | g |
 | Coriander Leaf | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Beat the drained hung curd with salt, pepper and chopped green chilli.
+2. Fold in finely diced cucumber, capsicum, onion and coriander.
+3. Spread thickly between the bread slices.
+4. Press, trim the crusts and cut into triangles.

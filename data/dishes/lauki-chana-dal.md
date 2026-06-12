@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 35
 seasons: [Summer, Monsoon]
+complexity: Easy
 ---
+
+Bottle gourd simmered with chana dal in a light onion-tomato gravy.
 
 ## Ingredients
 
@@ -24,3 +27,11 @@ seasons: [Summer, Monsoon]
 | Garlic | 10 | g |
 | Green Chilli | 1 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Soak the chana dal 30 minutes.
+2. Saute onion, ginger, garlic and green chilli, then add tomato and spices.
+3. Add diced bottle gourd and the drained dal with turmeric and salt.
+4. Add water, pressure cook until the dal is soft and the gourd is tender.
+5. Finish with coriander.

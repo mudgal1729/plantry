@@ -10,7 +10,10 @@ active: Yes
 satiety: Low
 prepMinutes: 15
 seasons: All
+complexity: Easy
 ---
+
+Crisp broccoli florets and sweet corn tossed with garlic.
 
 ## Ingredients
 
@@ -21,3 +24,10 @@ seasons: All
 | Onion | 80 | g |
 | Garlic | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Blanch the broccoli florets briefly so they stay bright and crisp.
+2. Saute garlic and green chilli, then the onion until soft.
+3. Add the broccoli, corn, salt and pepper.
+4. Toss on high heat for a few minutes, keeping the broccoli with bite.

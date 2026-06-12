@@ -10,7 +10,10 @@ active: Yes
 satiety: Low
 prepMinutes: 25
 seasons: All
+complexity: Easy
 ---
+
+Quick-cooking red masoor dal in a simple onion-tomato base.
 
 ## Ingredients
 
@@ -23,3 +26,10 @@ seasons: All
 | Ginger | 10 | g |
 | Green Chilli | 1 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Cook the masoor dal with turmeric and salt until soft.
+2. Saute onion, ginger, green chilli and tomato into a quick masala.
+3. Stir the masala into the dal and simmer to the consistency you like.
+4. Temper garlic and cumin in ghee, pour over, and finish with coriander.

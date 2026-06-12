@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 35
 seasons: All
+complexity: Easy
 ---
+
+Nutty chana dal cooked soft and finished with a garlic tempering.
 
 ## Ingredients
 
@@ -23,3 +26,10 @@ seasons: All
 | Ginger | 10 | g |
 | Green Chilli | 1 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Soak the chana dal 30 minutes, then pressure cook with turmeric and salt until soft.
+2. Saute onion, ginger, green chilli and tomato into a quick masala.
+3. Stir the masala into the dal and simmer to the consistency you like.
+4. Temper garlic and cumin in ghee and pour over, finish with coriander.

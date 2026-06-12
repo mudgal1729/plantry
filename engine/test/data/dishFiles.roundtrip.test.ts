@@ -140,8 +140,33 @@ describe("per-dish file round-trip", () => {
   });
 
   it("a bare dish file (no enrichment) parses with all enrichment fields absent", () => {
-    const original = readFileSync(resolve(dishesDir, "lauki-sabzi.md"), "utf8");
-    const parsed = parseDishFile("lauki-sabzi", original);
+    // Synthetic in-memory bare dish: valid frontmatter + ## Ingredients table,
+    // no description paragraph and no ## Recipe. Once both enrichment batches
+    // land, no real dish file is bare, so this case must not depend on one.
+    const original = [
+      "---",
+      "id: 997",
+      "name: Bare dish",
+      "category: Dry dish",
+      "time: Lunch",
+      "tags: []",
+      "primaryIngredient: Bottle Gourd",
+      "preferred: No",
+      "active: Yes",
+      "satiety: Low",
+      "prepMinutes: 20",
+      "seasons: [Summer, Monsoon]",
+      "---",
+      "",
+      "## Ingredients",
+      "",
+      "| Ingredient | Quantity | Unit |",
+      "|------------|----------|------|",
+      "| Bottle Gourd | 300 | g |",
+      "| Onion | 80 | g |",
+      "",
+    ].join("\n");
+    const parsed = parseDishFile("bare-dish", original);
     expect(parsed.dish.description).toBeUndefined();
     expect(parsed.dish.recipe).toBeUndefined();
     expect(parsed.dish.complexity).toBeUndefined();

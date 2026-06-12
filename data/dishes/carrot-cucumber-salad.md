@@ -10,7 +10,10 @@ active: Yes
 satiety: Low
 prepMinutes: 5
 seasons: All
+complexity: Easy
 ---
+
+A fresh grated carrot and cucumber salad sharpened with lemon.
 
 ## Ingredients
 
@@ -21,3 +24,9 @@ seasons: All
 | Lemon | 1 | pcs |
 | Coriander Leaf | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Grate the carrot and finely dice the cucumber.
+2. Toss with chopped green chilli, coriander and salt.
+3. Squeeze over the lemon just before serving.
