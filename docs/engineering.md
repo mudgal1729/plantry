@@ -242,6 +242,7 @@ plantry/
   docs/                # canonical specs + CHANGELOG
   data/                # human-edited library, history, structural changelog, menu images
     dishes/            # one file per dish: data/dishes/<slug>.md (frontmatter + ingredient rows)
+    dish-photos/       # web-ready dish photos (data/dish-photos/<slug>.jpg) + STYLE.md photo spec
     ingredients.md     # ingredient catalog: one row per ingredient (group, unit, pack size)
   design_handoff/      # the design handoff (contract, screens, primitives, tokens)
   features/            # active feature spec (one at a time)
