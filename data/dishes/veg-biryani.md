@@ -10,7 +10,11 @@ active: Yes
 satiety: High
 prepMinutes: 50
 seasons: All
+complexity: Hard
+skill: Layering and timing the dum so the rice and vegetables finish together
 ---
+
+Layered basmati rice and spiced mixed vegetables slow-cooked on dum.
 
 ## Ingredients
 
@@ -27,3 +31,11 @@ seasons: All
 | Green Chilli | 2 | pcs |
 | Mint Leaf | 10 | g |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Fry sliced onion till golden and set aside.
+2. Cook the vegetables with ginger, garlic, tomato and biryani spices till just tender.
+3. Parboil soaked basmati rice with whole spices and salt, drain at 70 percent done.
+4. Layer rice over the vegetables with mint, coriander and fried onions.
+5. Cover tight and cook on dum on low heat 20 minutes, then rest before fluffing.

@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 25
 seasons: All
+complexity: Easy
 ---
+
+Mushrooms and green peas simmered in a homely onion-tomato gravy.
 
 ## Ingredients
 
@@ -23,3 +26,11 @@ seasons: All
 | Ginger | 10 | g |
 | Garlic | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Saute onion, ginger, garlic and green chilli, then add tomato and spices.
+2. Cook the masala down till the oil separates.
+3. Add the sliced mushrooms and peas, then a little water for gravy.
+4. Cover and simmer till the peas are soft and the gravy thickens.
+5. Finish with garam masala.

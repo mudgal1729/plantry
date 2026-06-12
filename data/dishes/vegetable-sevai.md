@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 20
 seasons: All
+complexity: Easy
 ---
+
+Rice vermicelli tossed with vegetables and a curry-leaf tempering.
 
 ## Ingredients
 
@@ -24,3 +27,11 @@ seasons: All
 | Green Chilli | 2 | pcs |
 | Curry Leaf | 5 | g |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Dry-roast the rice vermicelli lightly, then soak or steam till just soft and drain.
+2. Temper mustard seeds, curry leaves and green chilli in oil.
+3. Saute the onion and diced vegetables till tender-crisp.
+4. Fold in the vermicelli and toss gently to combine.
+5. Finish with lemon and coriander.
