@@ -35,10 +35,23 @@ export interface WeekSlot {
   dishes: DishPick[];
 }
 
+/**
+ * A day the household marked skipped (eating out or away). The day's dishes stay
+ * in `slots` so restore is lossless; the Menu screen renders the reason in place
+ * of meals, and the skip-aware grocery query drops the day's ingredients.
+ */
+export interface SkippedDay {
+  day: ShortDay;
+  reason: string;
+  author: Identity;
+  skippedAt: number;
+}
+
 export interface CurrentWeek {
   weekStart: string;
   status: "draft" | "final";
   slots: WeekSlot[];
+  skippedDays?: SkippedDay[];
   version: number;
 }
 
