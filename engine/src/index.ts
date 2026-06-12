@@ -33,6 +33,7 @@ export { weekSchedule } from "./schedule.js";
 export type { SlotPlan, WeekScheduleArgs, LunchMenu } from "./schedule.js";
 export {
   composeSlot,
+  candidateSetPools,
   breakfastOptionA,
   breakfastOptionB,
   breakfastOptionC,
@@ -94,5 +95,9 @@ export { deriveDishMacros, proteinToCarbRatio, HOUSEHOLD_SERVINGS } from "./nutr
 export type { DishMacros } from "./nutrition.js";
 export { rankPickerAlternatives, PROTEIN_BAND_WIDTH_GRAMS } from "./pickerRanking.js";
 export type { PickerRankingArgs } from "./pickerRanking.js";
+export { planRequests, slotKey } from "./requests.js";
+export type { PlanRequestsArgs, PlanRequestsResult, RequestPlacement } from "./requests.js";
+export { rankExplore } from "./explore.js";
+export type { ExploreRankedDish, ExploreAffinityKey, RankExploreArgs } from "./explore.js";
 export { deriveHistoryRows } from "./historyRows.js";
 export type { DeriveHistoryRowsArgs } from "./historyRows.js";
