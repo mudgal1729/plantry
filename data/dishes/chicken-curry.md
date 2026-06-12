@@ -10,7 +10,12 @@ active: Yes
 satiety: High
 prepMinutes: 40
 seasons: All
+complexity: Medium
+skill: Comfortable, browning the onion masala matters
+buySpecially: Curry cut chicken, 300g
 ---
+
+Home-style chicken curry in a spiced onion-tomato gravy.
 
 ## Ingredients
 
@@ -23,3 +28,11 @@ seasons: All
 | Garlic | 10 | g |
 | Green Chilli | 2 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Brown the onions slowly in oil, then add ginger garlic paste.
+2. Add tomato, green chilli and ground spices, cook till the oil separates.
+3. Add the chicken and sear for a few minutes.
+4. Pour in water, cover and simmer 25 minutes until tender.
+5. Finish with coriander and a sprinkle of garam masala.
