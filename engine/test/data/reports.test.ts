@@ -86,12 +86,15 @@ describe("poolCoverageReport", () => {
     for (const p of pools) expect(p.count).toBeGreaterThanOrEqual(0);
   });
 
-  it("surfaces the known thin Fruit pool (1 candidate)", () => {
+  it("surfaces the Fruit pool from live data", () => {
+    // The expansion-0 batch deepened this slot from 1 to 3 candidates
+    // (Seasonal fruit, Banana bowl, Papaya bowl). The report tracks live data;
+    // the assertion is the post-expansion floor, not the old thin baseline.
     const { library } = loadLiveData();
     const pools = poolCoverageReport(library);
     const fruit = pools.find((p) => p.season === "Summer" && p.slot.includes("fruit"));
     expect(fruit).toBeDefined();
-    expect(fruit!.count).toBe(1);
+    expect(fruit!.count).toBe(3);
   });
 });
 
