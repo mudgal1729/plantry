@@ -32,6 +32,7 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
   visible without forcing a wrong category.
 | Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |
 |------------|-------|------|-----------|-----------------|---------------|-------------|
+| Banana | Other | pcs | | 120 | 1.1 | 23 |
 | Bhindi | Vegetables | g | | | 1.9 | 7 |
 | Bitter Gourd | Vegetables | g | | | 1 | 4 |
 | Black Urad Dal | Pantry | g | | | 25 | 59 |
@@ -67,6 +68,7 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Kidney Bean | Pantry | g | | | 24 | 60 |
 | Lemon | Aromatics and Herbs | pcs | | 60 | | |
 | Lettuce | Vegetables | g | 100 g | | 1.4 | 3 |
+| Mango | Other | g | | | 0.8 | 15 |
 | Masoor Dal | Pantry | g | | | 25 | 60 |
 | Milk | Proteins and Dairy | ml | | | 3.4 | 5 |
 | Mint Leaf | Aromatics and Herbs | g | | | | |
@@ -74,6 +76,7 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Mushroom | Vegetables | g | 200 g | | 3.1 | 3.3 |
 | Oats | Pantry | g | | | 13 | 67 |
 | Onion | Aromatics and Herbs | g | | | | |
+| Papaya | Other | g | | | 0.5 | 11 |
 | Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |
 | Pav Bread | Pantry | pcs | | 40 | 8 | 52 |
 | Peanut | Pantry | g | | | 26 | 16 |

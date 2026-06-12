@@ -249,7 +249,7 @@ Statuses: `not started`, `in progress (branch)`, `shipped (#PR)`. Every slice's 
 | B1.1–B1.3 | `data/enrichment-<n>` | Remaining ~90 dishes enriched, ~30 per batch | 2.2 | everything | in progress (batch 1 #38, `data/enrichment-1`; 60/118 dishes enriched) |
 | B2.1 | `data/photos-style` | STYLE.md photo spec + first photo batch | 2.1 | everything | in progress (#37 — STYLE.md committed; first photo batch pending external image generation) |
 | B2.2+ | `data/photos-<n>` | Photo batches to full coverage | B2.1 | everything | not started |
-| B3.1–B3.4 | `data/expansion-<n>` | ~80 new dishes, ~20 per batch, pool-report-driven | 2.2, B1 flowing | everything | not started |
+| B3.1–B3.4 | `data/expansion-<n>` | ~80 new dishes, ~20 per batch, pool-report-driven | 2.2, B1 flowing | everything | in progress (batch 1 `data/expansion-0`) |
 
 The serial spine is 1.1 → 1.2 → 2.1 → 2.2 → 3.1 → 3.2 → 4.1 → 4.2 → 5.1 → 5.2, then 6.1/7.1/8.1/9.1 fan out in parallel, then 10.1 closes. B-track runs alongside from 2.2 onward. (9.1 can start any time after 4.2; it needs the new manualChanges kinds and the reports to exist.)
 
