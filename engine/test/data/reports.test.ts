@@ -164,9 +164,13 @@ describe("hpProteinConsistencyReport", () => {
 });
 
 describe("specialSourcingReport", () => {
+  // Catalog mirrors the narrowed special set: only Tahini, Parsley and Bulgur
+  // Wheat need a special trip. Olive Oil, Chickpea and Onion are regular.
   const catalog: CatalogIngredient[] = [
     { ingredient: "Tahini", group: "Pantry", unit: "g", special: true },
-    { ingredient: "Olive Oil", group: "Pantry", unit: "ml", special: true },
+    { ingredient: "Bulgur Wheat", group: "Pantry", unit: "g", special: true },
+    { ingredient: "Parsley", group: "Aromatics and Herbs", unit: "g", special: true },
+    { ingredient: "Olive Oil", group: "Pantry", unit: "ml", special: false },
     { ingredient: "Chickpea", group: "Pantry", unit: "g", special: false },
     { ingredient: "Onion", group: "Aromatics and Herbs", unit: "g", special: false },
   ];
@@ -183,13 +187,15 @@ describe("specialSourcingReport", () => {
     const ingredients = [
       row(1, "Chickpea", 200),
       row(1, "Tahini", 30),
+      // Olive Oil is now a regular ingredient, so it must NOT be flagged.
       row(1, "Olive Oil", 15),
       row(2, "Onion", 80),
     ];
     const report = specialSourcingReport(dishes, ingredients, catalog);
-    // Only dish 1 uses special ingredients; dish 2 (all regular) is omitted.
+    // Only dish 1 uses a special ingredient (Tahini); dish 2 (all regular) is
+    // omitted, and Olive Oil drops out of dish 1's set.
     expect(report).toEqual([
-      { dishId: 1, dishName: "Hummus", ingredients: ["Olive Oil", "Tahini"] },
+      { dishId: 1, dishName: "Hummus", ingredients: ["Tahini"] },
     ]);
   });
 
@@ -206,21 +212,40 @@ describe("specialSourcingReport", () => {
     expect(report).toEqual([{ dishId: 1, dishName: "Double tahini", ingredients: ["Tahini"] }]);
   });
 
-  it("flags tabbouleh's Parsley and the other special ingredients on live data", () => {
+  it("flags exactly Hummus and Tabbouleh on live data (narrowed special set)", () => {
     const { library, ingredients, catalog: liveCatalog } = loadLiveData();
     const report = specialSourcingReport(library, ingredients, liveCatalog);
-    // At least one active dish needs a special trip, and every flagged dish names
-    // a non-empty special-ingredient set that all resolve to special catalog rows.
-    expect(report.length).toBeGreaterThan(0);
+
+    // The special set is narrowed to exactly three ingredients: Tahini, Parsley
+    // and Bulgur Wheat. Everything else (incl. Olive Oil, Mozzarella, Tofu,
+    // Basil, Pasta, Spaghetti) is regular Bangalore sourcing. This guards the
+    // catalog: if a row is silently re-marked Yes, this set widens and fails.
     const specialNames = new Set(liveCatalog.filter((c) => c.special).map((c) => c.ingredient));
+    expect(specialNames).toEqual(new Set(["Tahini", "Parsley", "Bulgur Wheat"]));
+
+    // Every flagged dish names a non-empty set that all resolve to special rows.
     for (const d of report) {
       expect(d.ingredients.length).toBeGreaterThan(0);
       for (const name of d.ingredients) expect(specialNames.has(name)).toBe(true);
     }
-    // Tabbouleh now uses Parsley (a special ingredient), so it must appear with
-    // Parsley among its flagged special ingredients.
-    const tabbouleh = report.find((d) => d.dishName === "Tabbouleh");
-    expect(tabbouleh).toBeDefined();
-    expect(tabbouleh!.ingredients).toContain("Parsley");
+
+    // Exactly two active dishes need a special trip, with their precise sets:
+    //   Hummus -> Tahini; Tabbouleh -> Bulgur Wheat + Parsley (sorted).
+    expect(report).toEqual([
+      { dishId: 174, dishName: "Hummus", ingredients: ["Tahini"] },
+      { dishId: 176, dishName: "Tabbouleh", ingredients: ["Bulgur Wheat", "Parsley"] },
+    ]);
+
+    // Staple Indian dishes and the now-regular international dishes (pasta,
+    // caprese/mozzarella, tofu curry, basil) are NOT flagged.
+    const flaggedNames = new Set(report.map((d) => d.dishName));
+    for (const name of [
+      "Pesto pasta",
+      "Caprese salad",
+      "Thai red curry tofu",
+      "Thai basil chicken",
+    ]) {
+      expect(flaggedNames.has(name)).toBe(false);
+    }
   });
 });
