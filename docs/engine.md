@@ -129,6 +129,7 @@ Grams per ingredient row:
 
 - `g` rows are already grams.
 - `pcs` rows convert via the catalog's `Grams per piece` (an egg is about 50 g). A `pcs` row with no `Grams per piece` contributes zero (it cannot be weighed, so it cannot contribute macro mass).
+- `ml` rows convert to grams 1:1, assuming a culinary liquid density of about 1 (milk and coconut milk both sit within noise of this for a display macro). No per-ingredient density column exists until a dish needs one (Principle 8).
 - A blank `Protein /100g` or `Carbs /100g` reads as zero; an ingredient absent from the catalog contributes zero.
 
 The macros are derived for display and for the reporting layer (below); they are not a §3 composition input or a §4 ranking input. The `HP` tag stays the rule input for high-protein composition; the reporting layer only surfaces drift between the tag and the derived protein.
