@@ -51,12 +51,19 @@ currentWeek
       source: "generated" | "swapped" | "custom"
       author: "rajat" | "tuhina" | "system"
       updatedAt: number
+      includeRecipe?: boolean          # share preference: include this dish's recipe sheet
     }
+  }
+  skippedDays?: array of {             # days marked skipped this week
+    day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"
+    reason: string
+    author: "rajat" | "tuhina"
+    skippedAt: number
   }
   version: number                      # for optimistic concurrency
 ```
 
-Each (day, meal) slot holds the engine's full pick list for that meal. Mon/Wed/Fri breakfast carries 2 dishes; Tue/Thu breakfast carries 1; Mon/Wed/Fri lunch carries 3; Tue/Thu lunch carries 4; Saturday lunch carries 3. Per-dish author and updatedAt let the slow loop attribute who changed which dish in a multi-dish meal.
+Each (day, meal) slot holds the engine's full pick list for that meal. Mon/Wed/Fri breakfast carries 2 dishes; Tue/Thu breakfast carries 1; Mon/Wed/Fri lunch carries 3; Tue/Thu lunch carries 4; Saturday lunch carries 3. Per-dish author and updatedAt let the slow loop attribute who changed which dish in a multi-dish meal. `includeRecipe` marks a dish whose recipe sheet rides along in the shared image family; it lives on the week so it resets when a new week document is generated. `skippedDays` records days the user is eating out or away; the day's dishes stay in `slots` (restore is lossless), and skipped days are excluded from the grocery list and the finalized archive.
 
 ```
 weekArchive
@@ -84,15 +91,34 @@ manualChanges                          # append-only log of user edits
   author: "rajat" | "tuhina"
   weekStart: string                    # ISO Monday, mirrors currentWeek
   day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat"
-  meal: "breakfast" | "lunch"
-  position: number                     # index into currentWeek.slots[].dishes
-  changeKind: "swap" | "custom"
+  meal?: "breakfast" | "lunch"         # absent for day-level kinds
+  position?: number                    # index into slots[].dishes; absent for day-level kinds
+  changeKind: "swap" | "custom" | "delete" | "add" | "skip_day" | "restore_day" | "save_next_week"
   before: { dishId: number | null, customLabel: string | null }
   after:  { dishId: number | null, customLabel: string | null }
   reason: string                       # user-provided, non-empty after trim
   status: "queued" | "in_review" | "applied" | "dismissed" | "reviewed_no_change"
   resolvedAt: number | null
   resolvedPr: string | null
+
+# One row per user edit to the live week. Dish-level kinds (swap, custom, delete,
+# add) carry meal + position and the before/after pick state; `add` uses a null
+# `before`, `delete` a null `after`. Day-level kinds (skip_day, restore_day) carry
+# the day and null before/after. `save_next_week` records the saved dish in
+# `after.dishId` (it targets next week, not a day of this one). This table plus
+# `comments` is the data behind the Changes tab.
+
+nextWeekQueue                          # dishes saved for next week from Explore
+  createdAt: number
+  author: "rajat" | "tuhina"
+  dishId: number                       # library dish id
+  reason: string                       # user-provided, non-empty after trim
+  status: "queued" | "placed" | "dropped"
+  consumedWeekStart: string | null     # ISO Monday once placed; null while queued
+
+# The next generation run reads `queued` rows as engine `requests`, marks placed
+# ones `placed` with the consuming week, and leaves unplaceable ones `queued` (an
+# incident is logged). The slow loop may mark stale queued rows `dropped`.
 
 incidents
   createdAt: number
@@ -108,7 +134,7 @@ userProfiles
   installedAt: number
 ```
 
-`comments`, `manualChanges`, and `incidents` are the three signal channels the slow loop consumes. Comments are explicit user feedback. Manual changes are observed behavior, one row per swap or custom one-off with the user's stated reason. Incidents are runtime violations from the engine or backend. Each row's `status` lifecycle is identical so the slow-loop mark-applied action can mark every consumed row uniformly (see `MAINTENANCE.md` §3).
+`comments`, `manualChanges`, `incidents`, and `nextWeekQueue` are the signal channels the slow loop consumes. Comments are explicit user feedback. Manual changes are observed behavior, one row per swap, custom one-off, delete, add, day skip, day restore, or save-for-next-week with the user's stated reason. Incidents are runtime violations from the engine or backend. The next-week queue records dishes the user wants the engine to favor. The `status` lifecycle on `comments`, `manualChanges`, and `incidents` is identical so the slow-loop mark-applied action can mark every consumed row uniformly (see `MAINTENANCE.md` §3); `nextWeekQueue` has its own `queued`/`placed`/`dropped` lifecycle driven by generation and the slow loop.
 
 The library + rules are not in Convex. Convex functions load them by importing typed JSON or TS modules emitted at build time from the markdown files (see §4).
 
@@ -141,6 +167,26 @@ Round-trip discipline: the build's parser is the same parser used by the round-t
 **Write (custom one-off):**
 1. Frontend calls `addCustomOneOff({ author, weekStart, day, meal, position, customLabel, reason, version })`.
 2. Patches `slot.dishes[position]` to `{ dishId: null, customLabel, source: "custom", author, updatedAt: now }` and inserts a `manualChanges` row with `changeKind: "custom"` in the same transaction.
+
+**Write (delete a dish):**
+1. Frontend calls `deleteDish({ author, weekStart, day, meal, position, reason, version })`.
+2. Validates author, non-empty trimmed `reason`, version, slot, and position. Removes `slot.dishes[position]`, increments `version`, and inserts a `manualChanges` row with `changeKind: "delete"`, `before` = the removed pick, `after` = a null entry. Delete is permissive: it may leave the day below its composition shape (the share image simply shows fewer items). Recoverable reasons: `version-mismatch`, `no-current-week`, `no-such-slot`, `no-such-position`.
+
+**Write (add a library dish to a day):**
+1. Frontend calls `addDish({ author, weekStart, day, meal, newDishId, reason, version })`.
+2. Validates author, non-empty trimmed `reason`, version, slot, and the dish (in library, meal-time, Active, in season; same hard filters as swap, no §3 composition check). Appends `{ dishId: newDishId, customLabel: null, source: "swapped", author, updatedAt: now }` to `slot.dishes`, increments `version`, and inserts a `manualChanges` row with `changeKind: "add"`, `before` = a null entry, `after` = the added dish. Returns the new `position`. Recoverable reasons: `version-mismatch`, `no-current-week`, `no-such-slot`, `dish-not-in-library`, `dish-not-meal-time`, `dish-not-active-or-in-season`.
+
+**Write (skip / restore a day):**
+1. Frontend calls `skipDay({ author, weekStart, day, reason, version })` or `restoreDay({ author, weekStart, day, reason, version })`.
+2. `skipDay` appends `{ day, reason, author, skippedAt: now }` to `currentWeek.skippedDays` (rejecting `already-skipped`); `restoreDay` removes the day's entry (rejecting `not-skipped`). The day's `slots` are never touched, so restore is lossless. Each increments `version` and inserts a `manualChanges` row (`changeKind: "skip_day"` / `"restore_day"`, day-level: no meal/position, null before/after). Recoverable reasons: `version-mismatch`, `no-current-week`, and the kind-specific `already-skipped` / `not-skipped`.
+
+**Write (save a dish for next week):**
+1. Frontend calls `saveForNextWeek({ author, weekStart, dishId, reason })`.
+2. Validates author, non-empty trimmed `reason`, and that the dish is in the library and not already queued. Inserts a `nextWeekQueue` row (`status: "queued"`, `consumedWeekStart: null`) and a `manualChanges` row with `changeKind: "save_next_week"` (the saved dish lives in `after.dishId`) in the same transaction. The next generation run consumes queued rows as engine `requests`. Recoverable reasons: `dish-not-in-library`, `already-queued`.
+
+**Write (include a recipe in the share):**
+1. Frontend calls `setIncludeRecipe({ author, weekStart, day, meal, position, include, version })`.
+2. Sets `includeRecipe` on `slot.dishes[position]` and increments `version`. This is a share preference, not a menu change, so it does NOT write a `manualChanges` row. Recoverable reasons: `version-mismatch`, `no-current-week`, `no-such-slot`, `no-such-position`.
 
 **Write (comment):**
 1. Frontend posts to `addComment({ author, attachedTo, text })`.

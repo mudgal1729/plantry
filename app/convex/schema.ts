@@ -36,9 +36,35 @@ export default defineSchema({
             source: v.union(v.literal("generated"), v.literal("swapped"), v.literal("custom")),
             author: v.union(v.literal("rajat"), v.literal("tuhina"), v.literal("system")),
             updatedAt: v.number(),
+            // Share preference: when true the dish's recipe sheet is included in the
+            // shared image family (`features/design-revamp.md` §1.7). Lives on the week
+            // so it resets naturally when a new week document is generated (Decision #10).
+            // Optional and additive: existing rows (no flag) read as "not included".
+            includeRecipe: v.optional(v.boolean()),
           }),
         ),
       }),
+    ),
+    // Days the user has marked as skipped this week (eating out, travel). The day's
+    // dishes are never removed (restore is lossless); skips are observed-behavior
+    // signal for the slow loop and exclude the day from grocery/archive in 4.2.
+    // Optional and additive: existing rows (no field) read as "no days skipped".
+    skippedDays: v.optional(
+      v.array(
+        v.object({
+          day: v.union(
+            v.literal("Mon"),
+            v.literal("Tue"),
+            v.literal("Wed"),
+            v.literal("Thu"),
+            v.literal("Fri"),
+            v.literal("Sat"),
+          ),
+          reason: v.string(),
+          author: v.union(v.literal("rajat"), v.literal("tuhina")),
+          skippedAt: v.number(),
+        }),
+      ),
     ),
     version: v.number(),
   }).index("by_weekStart", ["weekStart"]),
@@ -110,9 +136,23 @@ export default defineSchema({
       v.literal("Fri"),
       v.literal("Sat"),
     ),
-    meal: v.union(v.literal("breakfast"), v.literal("lunch")),
-    position: v.number(),
-    changeKind: v.union(v.literal("swap"), v.literal("custom")),
+    // Optional because day-level kinds (skip_day, restore_day, save_next_week)
+    // are not scoped to a single (meal, position). Loosening required->optional
+    // is additive: existing swap/custom rows still carry both and validate.
+    meal: v.optional(v.union(v.literal("breakfast"), v.literal("lunch"))),
+    position: v.optional(v.number()),
+    changeKind: v.union(
+      v.literal("swap"),
+      v.literal("custom"),
+      v.literal("delete"),
+      v.literal("add"),
+      v.literal("skip_day"),
+      v.literal("restore_day"),
+      v.literal("save_next_week"),
+    ),
+    // before/after carry the pick state on either side of the change. For `add`
+    // the before is a null entry; for `delete` the after is a null entry. Day-level
+    // kinds carry null entries on both sides (the day, not a dish, is the subject).
     before: v.object({
       dishId: v.union(v.number(), v.null()),
       customLabel: v.union(v.string(), v.null()),
@@ -134,6 +174,20 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_weekStart", ["weekStart"]),
+
+  // Dishes the user saved for next week from the Explore tab. The generation run
+  // reads `queued` rows as engine `requests`, marks placed ones `placed` with the
+  // consuming week, and leaves unplaceable ones `queued` (incident logged). The
+  // slow loop may mark stale rows `dropped` (`features/design-revamp.md` §1.4, §1.8).
+  // `reason` is required (Decision #8: one uniform rule for every fast-loop write).
+  nextWeekQueue: defineTable({
+    createdAt: v.number(),
+    author: v.union(v.literal("rajat"), v.literal("tuhina")),
+    dishId: v.number(),
+    reason: v.string(),
+    status: v.union(v.literal("queued"), v.literal("placed"), v.literal("dropped")),
+    consumedWeekStart: v.union(v.string(), v.null()), // ISO Monday once placed; null while queued
+  }).index("by_status", ["status"]),
 
   // Structured runtime error log written by the auto-recovery middleware.
   // Also fuel for the slow loop.
