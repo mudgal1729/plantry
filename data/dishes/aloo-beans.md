@@ -10,7 +10,10 @@ active: Yes
 satiety: Low
 prepMinutes: 20
 seasons: All
+complexity: Easy
 ---
+
+French beans and potato stir-fried with onion and a light spicing.
 
 ## Ingredients
 
@@ -22,3 +25,10 @@ seasons: All
 | Tomato | 80 | g |
 | Ginger | 10 | g |
 | Green Chilli | 1 | pcs |
+
+## Recipe
+
+1. Chop the beans fine and dice the potato small for even cooking.
+2. Saute onion, ginger and green chilli, then add tomato.
+3. Add the beans and potato with turmeric, chilli and salt.
+4. Cover and cook on low till tender, stirring occasionally.

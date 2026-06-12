@@ -140,8 +140,8 @@ describe("per-dish file round-trip", () => {
   });
 
   it("a bare dish file (no enrichment) parses with all enrichment fields absent", () => {
-    const original = readFileSync(resolve(dishesDir, "aloo-beans.md"), "utf8");
-    const parsed = parseDishFile("aloo-beans", original);
+    const original = readFileSync(resolve(dishesDir, "lauki-sabzi.md"), "utf8");
+    const parsed = parseDishFile("lauki-sabzi", original);
     expect(parsed.dish.description).toBeUndefined();
     expect(parsed.dish.recipe).toBeUndefined();
     expect(parsed.dish.complexity).toBeUndefined();

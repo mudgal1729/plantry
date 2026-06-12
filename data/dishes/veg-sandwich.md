@@ -10,7 +10,10 @@ active: Yes
 satiety: Medium
 prepMinutes: 15
 seasons: All
+complexity: Easy
 ---
+
+Layered vegetable sandwich with cucumber, tomato and a green chutney spread.
 
 ## Ingredients
 
@@ -22,3 +25,10 @@ seasons: All
 | Onion | 30 | g |
 | Lettuce | 20 | g |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Blend coriander with green chilli and lemon into a quick chutney.
+2. Spread the chutney on the bread slices.
+3. Layer cucumber, tomato, onion and lettuce, season with salt and pepper.
+4. Close, press, and grill or toast until crisp, then halve.

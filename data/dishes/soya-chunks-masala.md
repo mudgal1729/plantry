@@ -10,7 +10,11 @@ active: Yes
 satiety: High
 prepMinutes: 25
 seasons: All
+complexity: Easy
+prePrep: Soak the soya chunks in hot water, then squeeze dry
 ---
+
+Protein-rich soya chunks simmered with capsicum in an onion-tomato masala.
 
 ## Ingredients
 
@@ -24,3 +28,11 @@ seasons: All
 | Garlic | 10 | g |
 | Green Chilli | 2 | pcs |
 | Coriander Leaf | 10 | g |
+
+## Recipe
+
+1. Soak the soya chunks in hot salted water, then squeeze out the water.
+2. Saute onion, ginger, garlic and green chilli, add tomato and spices.
+3. Cook the masala till the oil separates, then add capsicum.
+4. Add the soya chunks with a little water and simmer till they soak up the gravy.
+5. Finish with garam masala and coriander.
