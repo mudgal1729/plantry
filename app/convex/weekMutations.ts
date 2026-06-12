@@ -1,9 +1,12 @@
 import { mutation } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
+import { dishes } from "@plantry/engine/library";
 import { assertAuthor } from "./lib/author.js";
 
 type ShortDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type LowerMeal = "breakfast" | "lunch";
+type LongDay = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+type CapMeal = "Breakfast" | "Lunch";
 
 type SlotAuthor = "rajat" | "tuhina" | "system";
 type DishPickShape = {
@@ -12,11 +15,31 @@ type DishPickShape = {
   source: "generated" | "swapped" | "custom";
   author: SlotAuthor;
   updatedAt: number;
+  includeRecipe?: boolean;
 };
 type SlotShape = {
   day: ShortDay;
   meal: LowerMeal;
   dishes: DishPickShape[];
+};
+type SkippedDayShape = {
+  day: ShortDay;
+  reason: string;
+  author: "rajat" | "tuhina";
+  skippedAt: number;
+};
+
+const LONG_DAY: Record<ShortDay, LongDay> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+};
+const CAP_MEAL: Record<LowerMeal, CapMeal> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
 };
 
 /**
@@ -161,6 +184,113 @@ export const addCustomOneOff = mutation({
       status: "queued",
       resolvedAt: null,
       resolvedPr: null,
+    });
+
+    return { ok: true, version: newVersion };
+  },
+});
+
+/**
+ * Finalizes the current week: appends a `weekArchive` row mirroring the
+ * `menu_history.md` format and flips `currentWeek.status` to `"final"`. On
+ * finalize the week's dishes enter the historical record that drives the §4
+ * recency rule on later weeks (`docs/product.md` §3 item 4, `docs/engine.md` §6).
+ *
+ * Skip-exclusion (`features/design-revamp.md` §1.4 item 3, §1.5): a day in
+ * `currentWeek.skippedDays` was not cooked, so its dishes contribute NO archive
+ * rows and recency must not see them. The day's `slots` stay intact (restore is
+ * lossless); finalize simply omits them from the appended rows. With no skipped
+ * days (the common case) every day's dishes archive, exactly as before this
+ * behavior existed.
+ *
+ * Custom one-offs (`dishId === null`) are also omitted: the archive mirrors
+ * `MenuHistoryRow`, which keys on a library dish id and name, and a free-text
+ * one-off has neither. This matches the grocery list, which likewise skips
+ * one-offs (they are not library dishes).
+ *
+ * The engine's skip-aware `deriveHistoryRows({ skippedDays })` operates on a
+ * `GeneratedWeek` of library `Dish` objects; the live `currentWeek` carries
+ * swapped and custom picks instead, so finalize derives the rows directly from
+ * the live slots here (applying the same skip + one-off exclusions) rather than
+ * re-running the engine against a week the user has since edited.
+ *
+ *   finalizeWeek({ author, weekStart, version })
+ *     => { ok: true; version: number }
+ *      | { ok: false; reason: "version-mismatch" | "no-current-week"
+ *                           | "already-final" }
+ */
+export const finalizeWeek = mutation({
+  args: {
+    author: v.string(),
+    weekStart: v.string(),
+    version: v.number(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | { ok: true; version: number }
+    | { ok: false; reason: "version-mismatch" | "no-current-week" | "already-final" }
+  > => {
+    assertAuthor(args.author);
+
+    const week = await ctx.db
+      .query("currentWeek")
+      .withIndex("by_weekStart", (q) => q.eq("weekStart", args.weekStart))
+      .unique();
+    if (!week) {
+      return { ok: false, reason: "no-current-week" };
+    }
+    if (week.version !== args.version) {
+      return { ok: false, reason: "version-mismatch" };
+    }
+    if (week.status === "final") {
+      return { ok: false, reason: "already-final" };
+    }
+
+    const skipped = new Set<ShortDay>(
+      ((week.skippedDays ?? []) as SkippedDayShape[]).map((s) => s.day),
+    );
+
+    // Build archive rows from the live slots, skipping skipped days and custom
+    // one-offs. Order follows the slot/position order so the archive reads the
+    // way the week was cooked. Dish names come from the baked library (the live
+    // pick stores only the id for a library dish); a pick whose id is not in the
+    // library is skipped defensively (the swap/add mutations only write library
+    // ids, so this is unreachable for real data).
+    const nameById = new Map<number, string>(dishes.map((d) => [d.id, d.name]));
+    const rows: {
+      day: LongDay;
+      meal: CapMeal;
+      dishName: string;
+      dishId: number;
+    }[] = [];
+    for (const slot of week.slots as SlotShape[]) {
+      if (skipped.has(slot.day)) continue;
+      for (const pick of slot.dishes) {
+        if (pick.dishId === null) continue;
+        const dishName = nameById.get(pick.dishId);
+        if (dishName === undefined) continue;
+        rows.push({
+          day: LONG_DAY[slot.day],
+          meal: CAP_MEAL[slot.meal],
+          dishName,
+          dishId: pick.dishId,
+        });
+      }
+    }
+
+    const now = Date.now();
+    await ctx.db.insert("weekArchive", {
+      weekStart: args.weekStart,
+      finalizedAt: now,
+      rows,
+    });
+
+    const newVersion = week.version + 1;
+    await ctx.db.patch(week._id, {
+      status: "final",
+      version: newVersion,
     });
 
     return { ok: true, version: newVersion };

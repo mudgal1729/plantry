@@ -159,6 +159,18 @@ Round-trip discipline: the build's parser is the same parser used by the round-t
 3. The engine ranks the pool by `docs/engine.md` §4 priority (longest-unused first, with the ingredient ledger and same-day-breakfast tilts seeded from the live week's other picks, excluding the slot/position being ranked).
 4. The currently-picked dish at this position is filtered out; the frontend renders the ranked list and the user picks any dish.
 
+**Read (grocery list):**
+1. Frontend calls `getGroceryList({ weekStart })`.
+2. The query groups the week's library-dish picks by day and hands the day-tagged shape plus `currentWeek.skippedDays` to the engine aggregator, which drops skipped days (a day the household is eating out is not cooked, so its dishes are not bought) before summing. Custom one-offs (null `dishId`) contribute nothing (their quantities are not in the library). Items carry `ingredient, quantity, unit, tracked, packs, packTotalGrams` in the fixed §3 group order, the structured shape the Swiggy MCP integration (§13) consumes. With no skipped days the output is identical to summing every day's picks flat.
+
+**Read (activity feed):**
+1. Frontend calls `listManualChangesForWeek({ weekStart })`.
+2. The query returns every `manualChanges` row for the week, newest first (all statuses, since the Changes tab is a history, not a work queue). The client merges in the week's `comments` separately; the two queries together are the Changes tab's data. Comments are not joined server-side so each signal keeps its own subscription.
+
+**Read (explore feed):**
+1. Frontend calls `getExploreFeed({ weekStart })`.
+2. The query feeds the engine `rankExplore` the library, the season for `weekStart`, and the cooking history: the baked `menu_history` plus a synthetic row per `weekArchive` row (weeks finalized since the last bake), so a dish cooked in either record is excluded. The engine returns the eligible (active, in-season), never-cooked dishes ranked familiar-but-new, each with its `dominantAffinity` key (`shared-ingredient` / `protein-match` / `familiar-category`); the query projects `{ dishId, name, dominantAffinity }`. The UI phrases the "why it fits" line from the key; no UI prose leaves the engine. With an empty `weekArchive` the feed is exactly what the engine derives from the seed.
+
 **Write (swap a dish):**
 1. Frontend optimistically updates the UI.
 2. Convex mutation `swapDish({ author, weekStart, day, meal, position, newDishId, reason, version })` validates: `version` matches the loaded version (optimistic concurrency); the (day, meal) slot exists and `position` is within `slot.dishes`; the new dish is in the library, matches the meal-time, is Active, and is in season; `reason` is non-empty after trim. Per `docs/product.md` §4 Principle 4 the fast loop stays permissive; §3 composition eligibility is not validated at swap time.
@@ -192,6 +204,14 @@ Round-trip discipline: the build's parser is the same parser used by the round-t
 **Write (comment):**
 1. Frontend posts to `addComment({ author, attachedTo, text })`.
 2. Convex inserts a `queued` row in `comments`. The slow loop consumes it later (see `MAINTENANCE.md` §1).
+
+**Write (finalize the week):**
+1. A user finalizes via `finalizeWeek({ author, weekStart, version })` (or a future scheduled action).
+2. Validates `author`, version (optimistic concurrency), that the week exists, and that it is not already `final`. Appends a `weekArchive` row whose `rows` mirror the `menu_history.md` format (long-form day, capitalised meal, dish name from the baked library, dish id), then flips `currentWeek.status` to `"final"` and increments `version`. Skipped days (`currentWeek.skippedDays`) and custom one-offs are excluded from the archive: a skipped day was not cooked, so recency (`docs/engine.md` §4) must not see it, and a one-off has no library id or canonical name. The day's `slots` are untouched (restore stays lossless). With no skipped days every library pick archives, exactly as a week with no skips always has. Recoverable reasons: `version-mismatch`, `no-current-week`, `already-final`.
+
+**Generation (consume the next-week queue):**
+1. `generateCurrentWeek({ weekStart, rng?, userRequestedDishId? })`, an `internalMutation` triggered by the EM or a future scheduled action, reads every `queued` `nextWeekQueue` row (createdAt ascending) and passes their `dishId`s to the engine as `requests` (`docs/engine.md` §6).
+2. The engine places each requested dish into a slot whose §3 composition accepts it, overriding §4 recency, or emits an incident when no slot accepts it (out of season, inactive, unknown, or no fitting slot). After generation, queue rows whose dish landed in the week are marked `placed` with `consumedWeekStart = weekStart`; rows whose dish could not be placed stay `queued` (the engine's incident is persisted to `incidents`) so a later run retries them. An empty queue (production today) yields no requests and leaves generation identical to before.
 
 ## 6. Auto-recovery middleware
 

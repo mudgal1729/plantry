@@ -1,7 +1,12 @@
 import { query } from "./_generated/server.js";
 import { v, ConvexError } from "convex/values";
 import { dishes, packSizes, ingredients, catalog } from "@plantry/engine/library";
-import { aggregateGroceryList, type Dish, type GroceryList } from "@plantry/engine";
+import {
+  aggregateGroceryList,
+  type Dish,
+  type GroceryDayPicks,
+  type GroceryList,
+} from "@plantry/engine";
 
 /**
  * Returns the structured grocery list for `currentWeek[weekStart]`. Drives the
@@ -23,6 +28,14 @@ import { aggregateGroceryList, type Dish, type GroceryList } from "@plantry/engi
  * library, and the user adds those ingredients themselves. This is consistent
  * with `docs/product.md` §3 item 3 (the list is built from the week's library
  * dishes) and `features/phase2.md` §3 Stream C.
+ *
+ * Skipped days (`currentWeek.skippedDays`, `docs/engine.md` §6) contribute
+ * nothing to the list: a day the household is eating out or away is not cooked,
+ * so its dishes are not bought. The query groups the week's picks by day and
+ * hands the day-tagged shape plus `skippedDays` to the engine aggregator, which
+ * drops the skipped days before summing. When no days are skipped the output is
+ * byte-identical to grouping all picks flat, so the current frontend (which
+ * calls this query with only `{ weekStart }`) is unaffected.
  */
 
 type ShortDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
@@ -34,6 +47,9 @@ type SlotShape = {
   day: ShortDay;
   meal: LowerMeal;
   dishes: DishPickShape[];
+};
+type SkippedDayShape = {
+  day: ShortDay;
 };
 
 /**
@@ -53,21 +69,33 @@ export const getGroceryList = query({
       throw new ConvexError("no current week for this weekStart");
     }
 
-    // Iterate every position in every (day, meal) slot. Custom one-offs
+    // Group every position in every (day, meal) slot by day. Custom one-offs
     // (`dishId === null`) are skipped: their ingredient quantities are not in
     // the library, and v1 expects the user to add those ingredients themselves.
     const libraryById = new Map<number, Dish>(dishes.map((d) => [d.id, d]));
-    const weekPicks: Dish[] = [];
+    const dishesByDay = new Map<ShortDay, Dish[]>();
     for (const slot of week.slots as SlotShape[]) {
       for (const pick of slot.dishes) {
         if (pick.dishId === null) continue;
         const dish = libraryById.get(pick.dishId);
-        if (dish) weekPicks.push(dish);
+        if (!dish) continue;
+        const bucket = dishesByDay.get(slot.day);
+        if (bucket) bucket.push(dish);
+        else dishesByDay.set(slot.day, [dish]);
       }
     }
+    const days: GroceryDayPicks[] = [...dishesByDay.entries()].map(([day, dishList]) => ({
+      day,
+      dishes: dishList,
+    }));
+
+    // Skipped days drop out before summing. The list resets weekly with the
+    // week document, so absent `skippedDays` (the common case) means none.
+    const skippedDays = ((week.skippedDays ?? []) as SkippedDayShape[]).map((s) => s.day);
 
     return aggregateGroceryList({
-      weekPicks,
+      days,
+      skippedDays,
       ingredients,
       packSizes,
       catalog,
