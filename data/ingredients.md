@@ -33,12 +33,15 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Ingredient | Group | Unit | Pack Size | Grams per piece | Protein /100g | Carbs /100g |
 |------------|-------|------|-----------|-----------------|---------------|-------------|
 | Banana | Other | pcs | | 120 | 1.1 | 23 |
+| Basil | Aromatics and Herbs | g | | | | |
+| Bean Sprout | Vegetables | g | | | 3 | 6 |
 | Bhindi | Vegetables | g | | | 1.9 | 7 |
 | Bitter Gourd | Vegetables | g | | | 1 | 4 |
 | Black Urad Dal | Pantry | g | | | 25 | 59 |
 | Bottle Gourd | Vegetables | g | | | 0.6 | 4 |
 | Bread | Pantry | pcs | | 30 | 9 | 49 |
 | Broccoli | Vegetables | g | | | 2.8 | 7 |
+| Bulgur Wheat | Pantry | g | | | 12 | 76 |
 | Cabbage | Vegetables | g | | | 1.3 | 6 |
 | Capsicum | Vegetables | g | | | 1 | 6 |
 | Carrot | Vegetables | g | | | 0.9 | 10 |
@@ -52,6 +55,7 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Chickpea | Pantry | g | | | 19 | 61 |
 | Coconut Milk | Pantry | ml | | | 2.3 | 6 |
 | Coriander Leaf | Aromatics and Herbs | g | | | | |
+| Cornflour | Pantry | g | | | 0.3 | 91 |
 | Cucumber | Vegetables | g | | | 0.7 | 4 |
 | Curd | Proteins and Dairy | g | 500 g | | 3.5 | 5 |
 | Curry Leaf | Aromatics and Herbs | g | | | | |
@@ -73,11 +77,15 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Milk | Proteins and Dairy | ml | | | 3.4 | 5 |
 | Mint Leaf | Aromatics and Herbs | g | | | | |
 | Moong Dal | Pantry | g | | | 24 | 59 |
+| Mozzarella | Proteins and Dairy | g | 200 g | | 22 | 2.2 |
 | Mushroom | Vegetables | g | 200 g | | 3.1 | 3.3 |
+| Noodles | Pantry | g | | | 12 | 71 |
 | Oats | Pantry | g | | | 13 | 67 |
+| Olive Oil | Pantry | ml | | | 0 | 0 |
 | Onion | Aromatics and Herbs | g | | | | |
 | Papaya | Other | g | | | 0.5 | 11 |
 | Paneer | Proteins and Dairy | g | 200 g | | 18 | 4 |
+| Pasta | Pantry | g | | | 13 | 75 |
 | Pav Bread | Pantry | pcs | | 40 | 8 | 52 |
 | Peanut | Pantry | g | | | 26 | 16 |
 | Potato | Vegetables | g | | | 2 | 17 |
@@ -88,9 +96,13 @@ Grouping judgment calls (institutional memory; do not silently re-bucket):
 | Sabudana | Pantry | g | | | 0.2 | 88 |
 | Semolina | Pantry | g | | | 13 | 73 |
 | Soyabean Chunk | Pantry | g | | | 52 | 33 |
+| Spaghetti | Pantry | g | | | 13 | 75 |
 | Spinach | Vegetables | g | | | 2.9 | 4 |
+| Spring Onion | Aromatics and Herbs | g | | | 1.8 | 7 |
 | Sprout | Pantry | g | | | 9 | 22 |
 | Sweet Corn | Pantry | g | | | 3.4 | 19 |
+| Tahini | Pantry | g | | | 17 | 21 |
 | Tinda | Vegetables | g | | | 1 | 5 |
+| Tofu | Proteins and Dairy | g | 200 g | | 12 | 2 |
 | Tomato | Aromatics and Herbs | g | | | | |
 | Toor Dal | Pantry | g | | | 22 | 63 |
