@@ -1483,4 +1483,139 @@ input {
 
 .toggle--on .toggle__knob {
   transform: translateX(18px);
+/* ── Explore tab (slice 7.1) ─────────────────────────────────────────────
+   The feed grid, filter row, dish cards, the Explore dish sheet's extra
+   bits (the "why it fits" line, the explore actions, the dislike link), the
+   day picker, and the confirmation toast. Appended to keep concurrent
+   app/web slices (6.1 Changes, 8.1 Share) from colliding on shared blocks. */
+.explore__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 16px 12px;
+}
+
+.explore__rubric {
+  padding: 0 16px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pt-sub);
+  margin-bottom: 10px;
+}
+
+.explore__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+  padding: 0 16px 24px;
+}
+
+.explore-card {
+  background: var(--pt-surface);
+  border: 1px solid var(--pt-line);
+  border-radius: var(--pt-radius-card);
+  overflow: hidden;
+  text-align: left;
+  display: block;
+  padding: 0;
+}
+
+.explore-card__photo {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  display: block;
+}
+
+.explore-card__photo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pt-bg);
+  border-bottom: 1px solid var(--pt-line);
+}
+
+.explore-card__body {
+  padding: 10px 12px 12px;
+}
+
+.explore-card__name {
+  font-family: var(--pt-font-serif);
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--pt-ink);
+}
+
+.explore-card__tag {
+  margin-top: 8px;
+}
+
+.explore-sheet__why {
+  font-size: 12.5px;
+  color: var(--pt-accent);
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.explore-sheet__action-use {
+  flex: 1.4;
+}
+
+.explore-sheet__action-next {
+  flex: 1;
+}
+
+.explore-sheet__dislike {
+  width: 100%;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pt-sub);
+  padding: 14px 0 4px;
+  font-family: var(--pt-font-sans);
+}
+
+.explore-daypicker {
+  margin-top: 6px;
+}
+
+.explore-daypicker__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 4px;
+  border-top: 1px solid var(--pt-line);
+  min-height: 52px;
+}
+
+.explore-daypicker__day {
+  font-family: var(--pt-font-serif);
+  font-size: 16.5px;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+.explore-daypicker__count {
+  font-size: 12.5px;
+  color: var(--pt-sub);
+}
+
+.explore__toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  max-width: 80%;
+  background: var(--pt-ink);
+  color: var(--pt-bg);
+  font-size: 13.5px;
+  padding: 10px 16px;
+  border-radius: var(--pt-radius-pill);
+  box-shadow: 0 8px 24px rgba(44, 36, 27, 0.18);
+  z-index: 60;
+  text-align: center;
 }

@@ -196,6 +196,25 @@ export default defineSchema({
     consumedWeekStart: v.union(v.string(), v.null()), // ISO Monday once placed; null while queued
   }).index("by_status", ["status"]),
 
+  // Dishes the user disliked from the Explore tab. A dislike is a slow-loop input
+  // only, never a change to the current week, so it lives in its own table and is
+  // NOT a `manualChanges` kind (Decision #12). Parallel in shape to
+  // `nextWeekQueue`. Rows are written `queued` by `dislikeDish` and read by the
+  // slow loop, which clusters them and may deactivate or down-rank a dish under
+  // right-size discipline; the loop marks consumed rows `applied` or `dismissed`.
+  // The fast loop never acts on a dislike: no re-rank, no auto-hide (Principle 5).
+  // `reason` is OPTIONAL (a dislike is a lightweight tap, unlike Decision #8's
+  // required save-reason); `consumedWeekStart` is null until the slow loop
+  // consumes the row (`features/design-revamp.md` §1.5, §1.8).
+  dishDislikes: defineTable({
+    createdAt: v.number(),
+    author: v.union(v.literal("rajat"), v.literal("tuhina")),
+    dishId: v.number(),
+    reason: v.union(v.string(), v.null()),
+    status: v.union(v.literal("queued"), v.literal("applied"), v.literal("dismissed")),
+    consumedWeekStart: v.union(v.string(), v.null()),
+  }).index("by_status", ["status"]),
+
   // Structured runtime error log written by the auto-recovery middleware.
   // Also fuel for the slow loop.
   incidents: defineTable({

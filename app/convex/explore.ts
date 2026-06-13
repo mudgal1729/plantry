@@ -85,10 +85,36 @@ export const getExploreFeed = query({
       catalog,
     });
 
-    return ranked.map((entry) => ({
-      dishId: entry.dish.id,
-      name: entry.dish.name,
-      dominantAffinity: entry.dominantAffinity,
-    }));
+    // Decision 9: hide dishes already placed in the current week or queued for
+    // next, so the tab keeps its "new on the plate" promise. Placed = any dish
+    // id appearing in a current-week slot for `weekStart`; queued = any dish id
+    // on a `queued` nextWeekQueue row (the queue is week-agnostic until a
+    // generation run consumes it, so all queued rows are excluded). Both reads
+    // are server-side so the wire payload is already trimmed.
+    const week = await ctx.db
+      .query("currentWeek")
+      .withIndex("by_weekStart", (q) => q.eq("weekStart", args.weekStart))
+      .unique();
+    const scheduled = new Set<number>();
+    if (week) {
+      for (const slot of week.slots) {
+        for (const pick of slot.dishes) {
+          if (pick.dishId !== null) scheduled.add(pick.dishId);
+        }
+      }
+    }
+    const queued = await ctx.db
+      .query("nextWeekQueue")
+      .withIndex("by_status", (q) => q.eq("status", "queued"))
+      .collect();
+    for (const row of queued) scheduled.add(row.dishId);
+
+    return ranked
+      .filter((entry) => !scheduled.has(entry.dish.id))
+      .map((entry) => ({
+        dishId: entry.dish.id,
+        name: entry.dish.name,
+        dominantAffinity: entry.dominantAffinity,
+      }));
   },
 });

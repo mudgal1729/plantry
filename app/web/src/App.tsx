@@ -5,8 +5,8 @@ import { PasscodeGate } from "./components/PasscodeGate.js";
 import { IdentityPicker } from "./components/IdentityPicker.js";
 import { MenuScreen } from "./components/MenuScreen.js";
 import { GroceryScreen } from "./components/GroceryScreen.js";
-import { ExploreScreen } from "./components/StubScreens.js";
 import { ChangesScreen } from "./components/ChangesScreen.js";
+import { ExploreScreen } from "./components/ExploreScreen.js";
 import { DayScreen } from "./components/DayScreen.js";
 import { TabBar, type TabKey } from "./components/primitives.js";
 import {
@@ -82,7 +82,7 @@ export function App() {
       );
     }
     if (tab === "Grocery") return <GroceryScreen />;
-    if (tab === "Explore") return <ExploreScreen />;
+    if (tab === "Explore") return <ExploreScreen identity={identity!} />;
     return <ChangesScreen />;
   }
 
