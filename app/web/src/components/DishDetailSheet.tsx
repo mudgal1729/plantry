@@ -8,7 +8,9 @@
 // design_handoff/hifi-overlays.jsx; the share-recipe toggle is deferred to 8.1.
 
 import { useState } from "react";
-import type { ShortDay } from "../lib/types.js";
+import { useMutation } from "convex/react";
+import { anyApi } from "convex/server";
+import type { Identity, Meal, ShortDay } from "../lib/types.js";
 import {
   dishById,
   dishIngredients,
@@ -21,7 +23,13 @@ import { Sheet, StatChip, PrimaryButton, QuietButton, SectionLabel } from "./pri
 interface DishDetailSheetProps {
   weekStart: string;
   day: ShortDay;
+  meal: Meal;
+  position: number;
+  version: number;
   dishId: number;
+  // Whether this dish entry currently rides along in the shared image family.
+  includeRecipe: boolean;
+  identity: Identity;
   onReplace: () => void;
   onDelete: () => void;
   onComment: () => void;
@@ -31,16 +39,50 @@ interface DishDetailSheetProps {
 export function DishDetailSheet({
   weekStart,
   day,
+  meal,
+  position,
+  version,
   dishId,
+  includeRecipe,
+  identity,
   onReplace,
   onDelete,
   onComment,
   onClose,
 }: DishDetailSheetProps) {
-  void weekStart;
   void day;
   const dish = dishById(dishId);
   const [showInfo, setShowInfo] = useState<boolean>(false);
+  // Optimistic local mirror of the share toggle so it flips instantly; the
+  // Convex subscription is the source of truth and re-syncs `includeRecipe` on
+  // the next render. Resetting to the prop on each open keeps it honest.
+  const [shareOn, setShareOn] = useState<boolean>(includeRecipe);
+  const setIncludeRecipe = useMutation(anyApi.dayMutations.setIncludeRecipe);
+
+  async function handleToggleRecipe() {
+    const next = !shareOn;
+    setShareOn(next);
+    try {
+      // setIncludeRecipe is a share preference, not a menu change: it writes no
+      // manualChanges row (Decision #10) and lives on the week, so it resets when
+      // a new week is generated. A version mismatch just means someone edited the
+      // week; the subscription will re-render with the fresh flag, so we revert
+      // the optimistic flip and let the user retry.
+      const result = (await setIncludeRecipe({
+        author: identity,
+        weekStart,
+        day,
+        meal,
+        position,
+        include: next,
+        version,
+      })) as { ok: true; version: number } | { ok: false; reason: string };
+      if (!result.ok) setShareOn(!next);
+    } catch (err) {
+      console.error("setIncludeRecipe threw", err);
+      setShareOn(!next);
+    }
+  }
 
   if (!dish) {
     // A pick whose id is not in the baked library should not reach here (the Day
@@ -143,6 +185,24 @@ export function DishDetailSheet({
                       <span>{step}</span>
                     </div>
                   ))}
+                  {/* Mark this week's tricky dish so its recipe sheet rides along
+                      in the shared image family. A share preference, not a menu
+                      change; it lives on the week and resets weekly (Decision
+                      #10). Only offered when the dish actually has a recipe to
+                      share. */}
+                  <div className="detail__share-toggle">
+                    <span className="detail__share-toggle-label">Include recipe when sharing</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={shareOn}
+                      aria-label="Include recipe when sharing"
+                      className={`toggle${shareOn ? " toggle--on" : ""}`}
+                      onClick={handleToggleRecipe}
+                    >
+                      <span className="toggle__knob" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -5,7 +5,7 @@
 // summary wires in slice 6.1), and a Share button (share family is slice 8.1, so
 // it is inert here). Editing routes through onEditDay into the legacy editor.
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import type { CurrentWeek, Identity, ShortDay } from "../lib/types.js";
@@ -14,6 +14,8 @@ import { getCachedWeek, setCachedWeek } from "../lib/storage.js";
 import { Avatar, PrimaryButton } from "./primitives.js";
 import { DayCard, type DayCardModel } from "./DayCard.js";
 import { deriveSummaryLine } from "./ChangesScreen.js";
+import { SharePreviewSheet } from "./SharePreviewSheet.js";
+import type { ShareGroceryGroup } from "./ShareImages.js";
 
 interface MenuScreenProps {
   identity: Identity;
@@ -65,6 +67,18 @@ function MenuBody({
     weekStart: week.weekStart,
   }) as Parameters<typeof deriveSummaryLine>[0] | undefined;
   const summaryLine = deriveSummaryLine(changes ?? []);
+
+  const [shareOpen, setShareOpen] = useState(false);
+
+  // The grocery list backing the share family's grocery image. Same skip-aware
+  // query the Grocery tab uses, so the shared image matches the Grocery screen.
+  // Only requested when online (offline shows the cached week without a live
+  // grocery query) and only when the share sheet is open, to avoid a query on
+  // every Menu visit. Falls back to an empty list until it resolves.
+  const grocery = useQuery(
+    anyApi.groceryList.getGroceryList,
+    !offline && shareOpen ? { weekStart: week.weekStart } : "skip",
+  ) as { groups: ShareGroceryGroup[] } | undefined;
   return (
     <>
       <div className="screen__scroll">
@@ -102,9 +116,22 @@ function MenuBody({
         </div>
       </div>
       <div className="screen__footer">
-        {/* Share is inert until the share family ships in slice 8.1. */}
-        <PrimaryButton>Share this week</PrimaryButton>
+        {/* Share opens the swipe-rail preview, which renders the image family
+            (menu, grocery, one recipe sheet per included dish) and sends them
+            via the OS share sheet. Offline shows the cached week, so the live
+            grocery query the share image needs is not available; keep Share off
+            until the real week is back. */}
+        <PrimaryButton disabled={offline} onClick={() => setShareOpen(true)}>
+          Share this week
+        </PrimaryButton>
       </div>
+      {shareOpen && (
+        <SharePreviewSheet
+          week={week}
+          grocery={grocery?.groups ?? []}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

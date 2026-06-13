@@ -20,7 +20,7 @@ Each week, the engine reads the dish library, the rules, the season, and the rec
 ## 3. What Plantry produces
 
 1. **Shared current-week view.** A read-only-by-default page both phones see, with six day cards (Mon to Sat) showing breakfast and lunch dishes, plus a date badge per day and the grocery list below.
-2. **Menu image (PNG).** One card per day, day and date badge on the left, meals on the right, grocery list underneath. No internal labels (no "Menu 3", no "weekend", no ingredient-reuse callouts). Calm, kitchen-friendly. WhatsApp-friendly to share at week-start. This is the "locked in" output.
+2. **Share image family.** The shareable output is a set of images sent together, not one PNG: a menu image (one card per day, day and date badge on the left, meals on the right; a skipped day shows as "Skipped"), a grocery image (the week's buy list in the fixed group order), and one recipe sheet per dish marked "include recipe when sharing" that week. No internal labels (no "Menu 3", no "weekend", no ingredient-reuse callouts). Calm, kitchen-friendly. The images render on the phone and go out through the native share sheet, so they land in WhatsApp at week-start. This is the "locked in" output.
 3. **Grocery list.** Grouped in fixed order: Proteins and Dairy, then Pantry, then Vegetables, then Aromatics and Herbs, then Other. Quantities aggregated across the week's dishes. Tracked ingredients (those with a declared pack size) are rounded up to the next pack multiple. Common pantry staples (flour, oil, salt, common spices, base rice) are omitted unless a dish explicitly lists them.
 4. **History update.** On finalize, the week's dishes append to the historical record. The record drives the no-repeat (recency) logic on subsequent weeks.
 

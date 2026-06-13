@@ -21,6 +21,13 @@ export interface DishPick {
   source: SlotSource;
   author: SlotAuthor;
   updatedAt: number;
+  /**
+   * Share preference: when true, this dish's recipe sheet rides along in the
+   * shared image family (the swipe-rail share, slice 8.1). Lives on the week
+   * document, so it resets when a new week is generated (Decision #10). Optional
+   * and additive, mirroring the Convex schema; absent reads as not included.
+   */
+  includeRecipe?: boolean;
 }
 
 /**

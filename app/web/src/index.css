@@ -1174,6 +1174,43 @@ input {
 }
 
 .change-entry__meta {
+/* ----------------------------------------------------------------------------
+   Share image family (slice 8.1). The shareable images are a separate surface
+   from the PWA chrome: a calm cream card, label-free, legible at phone size on
+   WhatsApp. Ported from design_handoff/hifi-share-image.jsx. Its palette is the
+   share-specific cream set, deliberately distinct from the app tokens so the
+   exported PNG reads as "the locked-in output", not a screenshot of the UI.
+   ------------------------------------------------------------------------- */
+
+.share-img {
+  width: 360px;
+  background: #fbf6ed;
+  color: var(--pt-ink);
+  font-family: var(--pt-font-sans);
+  padding: 26px 24px 20px;
+}
+
+.share-img__wordmark {
+  text-align: center;
+  margin-top: 18px;
+  font-family: var(--pt-font-serif);
+  font-size: 12px;
+  color: #b5a78f;
+  letter-spacing: 0.06em;
+}
+
+.share-img__heading {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.share-img__title {
+  font-family: var(--pt-font-serif);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.share-img__sub {
   font-size: 12.5px;
   color: var(--pt-sub);
   margin-top: 3px;
@@ -1186,4 +1223,264 @@ input {
   background: var(--pt-bg);
   border-radius: 10px;
   padding: 8px 12px;
+.share-img__days {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-img__day {
+  background: #fffefa;
+  border: 1px solid #ebe2d2;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 12px;
+}
+
+.share-img__badge {
+  width: 38px;
+  flex-shrink: 0;
+  text-align: center;
+  border-right: 1px solid #ebe2d2;
+  padding-right: 10px;
+}
+
+.share-img__badge-day {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pt-sub);
+}
+
+.share-img__badge-date {
+  font-family: var(--pt-font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.share-img__meals {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.share-img__meal-label {
+  color: var(--pt-green);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+.share-img__skipped {
+  color: var(--pt-sub);
+}
+
+.share-img__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-img__group-label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pt-green);
+  font-weight: 700;
+  border-bottom: 1px solid #ebe2d2;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.share-img__group-items {
+  column-count: 2;
+  column-gap: 18px;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.share-img__group-item {
+  break-inside: avoid;
+}
+
+.share-img__cook {
+  background: #fffefa;
+  border: 1px solid #ebe2d2;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.share-img__cook-key {
+  color: var(--pt-sub);
+}
+
+.share-img__recipe {
+  margin-top: 12px;
+}
+
+.share-img__recipe-step {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.share-img__recipe-num {
+  font-family: var(--pt-font-serif);
+  color: var(--pt-accent);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.share-img__empty {
+  font-size: 12.5px;
+  color: var(--pt-sub);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* ----------------------------------------------------------------------------
+   Share preview sheet (slice 8.1). A horizontal swipe rail of the image family,
+   the way the images arrive on WhatsApp, plus the Send button. A hidden capture
+   stage holds the off-screen 360px renders html-to-image paints to PNG.
+   ------------------------------------------------------------------------- */
+
+.share__title {
+  font-family: var(--pt-font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.share__sub {
+  font-size: 13px;
+  color: var(--pt-sub);
+  margin-bottom: 12px;
+}
+
+.share__rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  margin: 0 -18px;
+  padding: 0 18px 6px;
+}
+
+.share__slide {
+  flex-shrink: 0;
+  width: 82%;
+  scroll-snap-align: center;
+}
+
+.share__slide-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pt-sub);
+  margin-bottom: 8px;
+}
+
+.share__slide-frame {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--pt-line);
+  box-shadow: 0 8px 24px rgba(44, 36, 27, 0.1);
+}
+
+/* The slide's share-img renders at its native 360px; scale it down to fit the
+   rail card without reflowing the layout the export will capture. */
+.share__slide-frame .share-img {
+  width: 100%;
+  padding: 18px 16px 14px;
+}
+
+.share__hint {
+  font-size: 12.5px;
+  color: var(--pt-sub);
+  margin-top: 10px;
+}
+
+.share__error {
+  font-size: 12.5px;
+  color: var(--pt-danger);
+  margin-top: 10px;
+}
+
+.share__send {
+  margin-top: 14px;
+}
+
+/* Off-screen capture stage: laid out (not display:none) so html-to-image can
+   walk a real node, but pushed out of view and ignored by assistive tech. */
+.share__stage {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 360px;
+  pointer-events: none;
+}
+
+.share__capture {
+  width: 360px;
+}
+
+/* ----------------------------------------------------------------------------
+   Include-recipe toggle (slice 8.1), shown in the dish details sheet's recipe
+   section. A share preference, not a menu change (Decision #10).
+   ------------------------------------------------------------------------- */
+
+.detail__share-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  background: var(--pt-surface);
+  border: 1px solid var(--pt-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.detail__share-toggle-label {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.toggle {
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: var(--pt-radius-pill);
+  background: var(--pt-line);
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+.toggle--on {
+  background: var(--pt-green);
+}
+
+.toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--pt-surface);
+  box-shadow: 0 1px 2px rgba(44, 36, 27, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.toggle--on .toggle__knob {
+  transform: translateX(18px);
 }

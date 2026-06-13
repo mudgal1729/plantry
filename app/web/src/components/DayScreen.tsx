@@ -256,7 +256,12 @@ export function DayScreen({ day, identity, onBack }: DayScreenProps) {
             <DishDetailSheet
               weekStart={weekStart}
               day={day}
+              meal={overlay.meal}
+              position={overlay.position}
+              version={version}
               dishId={dishId}
+              includeRecipe={pick.includeRecipe ?? false}
+              identity={identity}
               onReplace={() =>
                 setOverlay({ kind: "swap", meal: overlay.meal, position: overlay.position })
               }
